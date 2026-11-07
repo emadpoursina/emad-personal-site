@@ -1,7 +1,6 @@
 # .ainative/project.yaml — live copy for emad-personal-site (created from project.yaml.template)
-# The TODO placeholder below is intentional at onboarding time. The loop
-# blocks cards until project-bootstrapper replaces it with real commands
-# that prove the scaffold runs.
+# Real validation commands (scaffold verified by npm run build).
 
 validation_commands:
-  - echo "TODO(bootstrap): replace with real validation commands, e.g. npm test && npm run build"
+  - npm ci
+  - npm run build
