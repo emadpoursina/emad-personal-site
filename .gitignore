@@ -1,0 +1,19 @@
+# Secrets: never commit
+.env
+.env.*
+!.env.example
+
+# Runtime data
+data/
+*.sqlite
+*.sqlite-journal
+
+# Build output and dependencies
+node_modules/
+dist/
+.astro/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
