@@ -8,6 +8,9 @@ data/
 *.sqlite
 *.sqlite-journal
 
+# Scratch: local working notes, never tracked
+scratch/
+
 # Build output and dependencies
 node_modules/
 dist/
