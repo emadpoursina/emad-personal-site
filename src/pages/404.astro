@@ -1,0 +1,40 @@
+---
+/**
+ * src/pages/404.astro
+ *
+ * Static 404 page with links to / and /contact.
+ * Uses BaseLayout for consistent structure and styling.
+ *
+ * Note: In Astro 5 with output:'server', custom 404 pages are supported as
+ * prerendered static pages. Setting prerender = true makes Astro emit
+ * dist/client/404.html at build time.
+ */
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+export const prerender = true;
+---
+
+<BaseLayout
+  title="Page not found — Emad Poursina"
+  description="The page you requested could not be found."
+>
+  <Fragment slot="header">
+    <nav aria-label="Site navigation">
+      <a href="/">Emad Poursina</a>
+    </nav>
+  </Fragment>
+
+  <h1>Page not found</h1>
+  <p>The page you were looking for does not exist.</p>
+  <nav aria-label="Recovery links">
+    <ul>
+      <li><a href="/">Go to the home page</a></li>
+      <li><a href="/contact">Go to the contact page</a></li>
+    </ul>
+  </nav>
+
+  <Fragment slot="footer">
+    <p>&copy; Emad Poursina</p>
+  </Fragment>
+</BaseLayout>

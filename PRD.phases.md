@@ -20,7 +20,7 @@
 - [ ] `docker compose up` starts the site with a named volume, and the site responds on its health endpoint
 - [ ] Home page LCP is under 2.0s on the mid-range phone profile in the PRD
 **Out of scope:** Case studies, About page, agent-readable files, the AI assistant, the cover-letter generator, and the admin panel.
-**Spec:** none
+**Spec:** 001-phase-1-public-home-cv-contact
 
 ## Phase 2: Case studies, About, and agent-readable layer
 

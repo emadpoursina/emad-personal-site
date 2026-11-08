@@ -1,0 +1,52 @@
+---
+/**
+ * src/pages/contact.astro
+ *
+ * Prerendered static Contact page.
+ * Displays a single <h1>, a short introduction, the native ContactForm,
+ * and the direct-email fallback.
+ */
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ContactForm from '../components/ContactForm.astro';
+
+export const prerender = true;
+---
+
+<BaseLayout
+  title="Contact — Emad Poursina"
+  description="Send a message to Emad Poursina or get in touch via email."
+>
+  <div class="contact-container">
+    <h1>Contact</h1>
+    <p class="intro">
+      If you would like to discuss a project, employment opportunity, or have a question, please get in touch using the form below.
+    </p>
+
+    <ContactForm />
+  </div>
+</BaseLayout>
+
+<style>
+  .contact-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--fg-heading);
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+  }
+
+  .intro {
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    color: var(--fg);
+    margin-bottom: 2rem;
+  }
+</style>

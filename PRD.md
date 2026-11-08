@@ -1,10 +1,10 @@
 # Product Requirements Document: Emad Poursina — Personal Professional Site
 
-**Version:** 1.3
+**Version:** 1.4
 **Date:** 2026-11-07
 **Status:** Approved
 **Author:** PRD Writer Agent, from the confirmed discovery decision table
-**Change log:** 1.1 (2026-11-07): host set to this machine with Docker Compose (no VPS yet); site email emad.poursina.work@gmail.com; AI provider OpenRouter with a default model; admin settings panel added (F21); CV scoped as one simple page with PDF download; master profile used as reference only, plus the updates given in chat. 1.2 (2026-11-07): contact SMTP = Gmail with app password for emad.poursina.work@gmail.com; chat log stores full question text; cover-letter generator (F9) blocked until the generator API docs are provided (not a scope cut); OpenRouter uses the default daily cap only (no USD cap); VoiceDash case study approved for drafting, pending manager confirmation. 1.3 (2026-11-07): manager confirmation received for the VoiceDash case study (go ahead); git commit identity is Emad Poursina <emad.puursina@gmail.com>, while the website contact email stays emad.poursina.work@gmail.com; cover-letter generator service is not ready to use yet, so F9 stays blocked and its form stays hidden until its endpoint is configured.
+**Change log:** 1.1 (2026-11-07): host set to this machine with Docker Compose (no VPS yet); site email emad.poursina.work@gmail.com; AI provider OpenRouter with a default model; admin settings panel added (F21); CV scoped as one simple page with PDF download; master profile used as reference only, plus the updates given in chat. 1.2 (2026-11-07): contact SMTP = Gmail with app password for emad.poursina.work@gmail.com; chat log stores full question text; cover-letter generator (F9) blocked until the generator API docs are provided (not a scope cut); OpenRouter uses the default daily cap only (no USD cap); VoiceDash case study approved for drafting, pending manager confirmation. 1.3 (2026-11-07): manager confirmation received for the VoiceDash case study (go ahead); git commit identity is Emad Poursina <emad.puursina@gmail.com>, while the website contact email stays emad.poursina.work@gmail.com; cover-letter generator service is not ready to use yet, so F9 stays blocked and its form stays hidden until its endpoint is configured. 1.4 (2026-11-07): headline switched to the v3.0 profile positioning "AI and Agentic Systems Engineer with a strong foundation in software development" (owner decision); OQ-1 answered — master profile v3.0 supplied and `content/profile.json` transcribed from it; OQ-2 deferred — no SMTP relay on the host, so live delivery stays an owner-signed manual check and the contact path is proven against a local sink. LinkedIn supplied (`https://www.linkedin.com/in/emadpoursina/`); role dates carry month precision chosen for presentation (the owner confirmed exact days are immaterial).
 
 ---
 
@@ -148,7 +148,7 @@ Not a commercial product. There is no revenue model. Success means interviews an
 
 #### Acceptance Criteria
 
-1. WHEN a visitor opens `/`, THE System SHALL display the headline "Backend engineer building production Node.js and AI-integrated systems" within the first viewport.
+1. WHEN a visitor opens `/`, THE System SHALL display the headline "AI and Agentic Systems Engineer with a strong foundation in software development" within the first viewport.
 2. WHEN a visitor opens `/`, THE System SHALL display the work-authorization line "Requires employer-sponsored work authorization." and the availability ("one month notice") text.
 3. WHEN a visitor opens `/`, THE System SHALL display links to Case Studies, CV, and Contact, each reachable in one click.
 4. IF the bio text would contain a claim not present in the approved profile, THEN THE System SHALL omit the claim (enforced by content review, not runtime logic).
@@ -372,7 +372,7 @@ Not a commercial product. There is no revenue model. Success means interviews an
 | R7 | Overclaiming Learning-level skills (NestJS, GraphQL, AWS, Jest, GitHub Actions) | High | Labels from profile §3 enforced in F3 AC2–3; no Learning skill in headline |
 | R8 | SMTP credentials leak through git or the image | High | `.env` in `.gitignore`; `.dockerignore` excludes it; secret scan before commit |
 | R9 | Local-only hosting means the site is not reachable to recruiters until VPS setup | Medium | Accepted by decision; VPS and domain are a later phase (F18) |
-| R10 | Headline says "AI-integrated systems" while profile rates AI integration Intermediate | Medium | Matches the profile; update the headline when profile §3 is revised |
+| R10 | Headline is positioning-led ("AI and Agentic Systems Engineer…") while the skill matrix rates AI integration Intermediate and most agentic tooling Beginner / Learning | Medium | The headline states positioning, not proficiency; Learning-level skills never enter strengths lists or headline claims (F3 AC3); revisit when the matrix changes |
 | R11 | Assumption: the external generator service exposes a documented API with a stable contract | Medium | Confirm its API docs before F9 is built; F9 is skipped if not available |
 | R12 | Assumption: an SMTP provider is available for `emad.poursina.work@gmail.com` | Medium | Confirm credentials before F6 is tested end to end |
 
@@ -381,5 +381,5 @@ Not a commercial product. There is no revenue model. Success means interviews an
 - When will the cover-letter and CV generator service be ready? Its endpoint, request format, and authentication are needed before F9 can be built, and before F13 (tailored CV, V1.1).
 - Scope: "keep it one simple page" applies only to the CV and resume. The rest of the MVP stays as listed (F1–F12, F21).
 - VoiceDash: manager confirmation received (1.3). Master profile §5 still says the codebase is confidential and is not edited by this project; you update §5 when you're ready.
-- The headline is set to "Backend engineer building production Node.js and AI-integrated systems" (you asked me to choose). Revisit it when master-profile §3 is updated to advanced AI-integration.
+- The headline is set to "AI and Agentic Systems Engineer with a strong foundation in software development" (you asked me to choose). Revisit it when master-profile §3 is updated to advanced AI-integration.
 - Which brand name, if any, should appear in the header (currently "Emad Poursina")?

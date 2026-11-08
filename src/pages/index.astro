@@ -1,16 +1,191 @@
 ---
+/**
+ * src/pages/index.astro
+ *
+ * Public Home Page (User Story 1, FR-001..FR-005).
+ * Prerendered static page displaying Emad's professional profile.
+ */
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { loadProfile } from '../lib/profile.mjs';
+
+export const prerender = true;
+
+const profile = loadProfile();
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<BaseLayout
+  title={`${profile.name} — ${profile.headline}`}
+  description={profile.bio}
+>
+  <div class="home-container">
+    <section class="hero-section" aria-labelledby="headline">
+      <h1 id="headline" class="headline">{profile.headline}</h1>
+      <p class="author-name">{profile.name}</p>
+
+      <div class="key-facts">
+        <p class="work-auth">{profile.workAuthorization}</p>
+        <p class="availability">Availability: <span>{profile.availability}</span></p>
+      </div>
+
+      <nav class="primary-links" aria-label="Primary actions">
+        <a href="/case-studies" class="btn btn-primary">Case Studies</a>
+        <a href="/cv.pdf" class="btn btn-secondary">CV</a>
+        <a href="/contact" class="btn btn-secondary">Contact</a>
+      </nav>
+    </section>
+
+    <section class="content-section" aria-labelledby="about-heading">
+      <h2 id="about-heading">About</h2>
+      <p class="bio-text">{profile.bio}</p>
+    </section>
+
+    <section class="content-section" aria-labelledby="roles-heading">
+      <h2 id="roles-heading">Target Roles</h2>
+      <ul class="tag-list">
+        {profile.targetRoles.map((role) => (
+          <li>{role}</li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="content-section" aria-labelledby="countries-heading">
+      <h2 id="countries-heading">Target Countries</h2>
+      <ul class="tag-list">
+        {profile.targetCountries.map((country) => (
+          <li>{country}</li>
+        ))}
+      </ul>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .home-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  .hero-section {
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--bg-muted);
+    margin-bottom: 2rem;
+  }
+
+  .headline {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--fg-heading);
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+  }
+
+  .author-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--fg-muted);
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+  }
+
+  .key-facts {
+    background-color: var(--bg-muted);
+    padding: 1rem 1.25rem;
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+  }
+
+  .key-facts p {
+    margin: 0.25rem 0;
+  }
+
+  .work-auth {
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .availability {
+    color: var(--fg-muted);
+  }
+
+  .availability span {
+    color: var(--fg);
+    font-weight: 500;
+  }
+
+  .primary-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 0.625rem 1.25rem;
+    font-weight: 600;
+    font-size: 1rem;
+    text-decoration: none;
+    border-radius: 4px;
+    text-align: center;
+  }
+
+  .btn-primary {
+    background-color: var(--bg-btn);
+    color: var(--fg-btn);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--bg-btn-hover);
+    color: var(--fg-btn-hover);
+  }
+
+  .btn-secondary {
+    background-color: transparent;
+    color: var(--fg-link);
+    border: 1px solid var(--fg-link);
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--bg-muted);
+    color: var(--fg-link-hover);
+    border-color: var(--fg-link-hover);
+  }
+
+  .content-section {
+    margin-bottom: 2.5rem;
+  }
+
+  .content-section h2 {
+    font-size: 1.5rem;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--bg-muted);
+    padding-bottom: 0.5rem;
+  }
+
+  .bio-text {
+    font-size: 1.0625rem;
+    line-height: 1.7;
+    color: var(--fg);
+  }
+
+  .tag-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .tag-list li {
+    background-color: var(--bg-muted);
+    color: var(--fg);
+    padding: 0.375rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.9375rem;
+  }
+</style>

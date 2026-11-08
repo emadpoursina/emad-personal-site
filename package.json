@@ -8,11 +8,21 @@
   },
   "scripts": {
     "dev": "astro dev",
+    "prebuild": "node scripts/build-cv.mjs && node scripts/check-contrast.mjs",
     "build": "astro build",
+    "postbuild": "node scripts/check-cv.mjs && node scripts/check-static-output.mjs",
     "preview": "astro preview",
+    "start": "node --experimental-sqlite dist/server/entry.mjs",
+    "test": "node --experimental-sqlite --test tests/*.test.mjs",
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^5.18.2"
+    "@astrojs/node": "^9.1.4",
+    "astro": "^5.18.2",
+    "nodemailer": "^6.9.16",
+    "pdfkit": "^0.15.2"
+  },
+  "devDependencies": {
+    "pdfjs-dist": "^4.10.38"
   }
 }
