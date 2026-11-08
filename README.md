@@ -67,8 +67,9 @@ node scripts/lighthouse-check.mjs
 node scripts/verify-container.mjs
 ```
 
-- `npm test` runs the unit tests with `node:test` (profile validation, env, database, rate limiter,
-  contact service, HTTP outcomes, contrast maths, CV heading/gap logic, home content).
+- `npm test` runs 98 unit tests with `node:test` (profile validation, env, database, rate limiter,
+  contact service, HTTP outcomes, contrast maths, CV heading/gap logic, home content, mail header
+  sanitising).
 - `scripts/test-contact-api.mjs` boots two built-server instances with a temporary `DATA_DIR` and a
   local SMTP sink; it proves the sent, invalid, rate-limited, and failed-delivery paths and prints
   `sent=1 rows=1 invalid=0 rate_limited=429 failed_row=1`.

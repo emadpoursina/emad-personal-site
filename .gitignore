@@ -29,6 +29,9 @@ specs/*/evidence/
 # Local cache
 .cache/
 
+# Linked worktrees (agent scratch checkouts, never tracked)
+.worktrees/
+
 # OS / editor
 .DS_Store
 .vscode/
