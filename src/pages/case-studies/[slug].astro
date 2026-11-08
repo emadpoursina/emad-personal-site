@@ -1,0 +1,132 @@
+---
+/**
+ * src/pages/case-studies/[slug].astro
+ *
+ * Case study detail page for published case studies.
+ */
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import studiesDoc from '../../../content/case-studies.json';
+import { publishedStudies } from '../../lib/case-studies.mjs';
+
+export const prerender = true;
+
+export function getStaticPaths() {
+  return publishedStudies(studiesDoc).map((study) => ({
+    params: { slug: study.slug },
+    props: { study },
+  }));
+}
+
+const { study } = Astro.props;
+
+const hasPublicLink =
+  study.visibility === 'public' &&
+  study.publicLink !== null &&
+  typeof study.publicLink === 'object' &&
+  typeof study.publicLink.url === 'string';
+---
+
+<BaseLayout
+  title={`${study.title} — Case Study — Emad Poursina`}
+  description={study.problem}
+>
+  <div class="case-study-detail-container">
+    <h1>{study.title}</h1>
+
+    <section class="content-section">
+      <h2>Problem</h2>
+      <p>{study.problem}</p>
+    </section>
+
+    <section class="content-section">
+      <h2>My Contribution</h2>
+      <p>{study.contribution}</p>
+    </section>
+
+    <section class="content-section">
+      <h2>Outcome</h2>
+      <p>{study.outcome}</p>
+    </section>
+
+    <section class="content-section">
+      <h2>Stack</h2>
+      <ul>
+        {study.stack.map((item: string) => (
+          <li>{item}</li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="content-section">
+      <h2>Public Link</h2>
+      {hasPublicLink ? (
+        <p><a href={study.publicLink.url} rel="noopener">{study.publicLink.url}</a></p>
+      ) : (
+        <p>Private personal project — no public link.</p>
+      )}
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .case-study-detail-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--fg-heading);
+    margin-top: 0;
+    margin-bottom: 2rem;
+  }
+
+  .content-section {
+    margin-bottom: 2.5rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    color: var(--fg-heading);
+    margin-top: 0;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--bg-muted);
+    padding-bottom: 0.5rem;
+  }
+
+  p {
+    font-size: 1.0625rem;
+    line-height: 1.7;
+    color: var(--fg);
+    margin: 0 0 1rem;
+  }
+
+  p:last-child {
+    margin-bottom: 0;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1.5rem;
+    color: var(--fg);
+    line-height: 1.7;
+  }
+
+  li {
+    font-size: 1.0625rem;
+    margin-bottom: 0.25rem;
+  }
+
+  a {
+    color: var(--fg-link);
+    text-decoration: underline;
+  }
+
+  a:hover {
+    color: var(--fg-link-hover);
+  }
+</style>

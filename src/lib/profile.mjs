@@ -39,6 +39,16 @@ export const ALLOWED_SKILL_LEVELS = new Set([
   'Beginner / Learning',
 ]);
 
+export const SKILL_CATEGORIES = [
+  'Backend',
+  'Databases',
+  'Frontend',
+  'DevOps & Infrastructure',
+  'Testing',
+  'Other Technical Skills',
+  'Agentic Coding & AI Tooling',
+];
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -83,6 +93,16 @@ export function validateProfile(profile, filePath = 'content/profile.json') {
   }
 
   const p = /** @type {Record<string, unknown>} */ (profile);
+
+  // --- lastUpdated: required ISO date string YYYY-MM-DD ---
+  if (
+    typeof p['lastUpdated'] !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(p['lastUpdated'])
+  ) {
+    throw new Error(
+      `profile field missing or invalid: lastUpdated (expected YYYY-MM-DD, got ${JSON.stringify(p['lastUpdated'])})`
+    );
+  }
 
   // --- Required non-empty string fields ---
   const stringFields = [
@@ -143,6 +163,22 @@ export function validateProfile(profile, filePath = 'content/profile.json') {
   if (!isNonEmptyArray(p['experience'])) {
     throw new Error(`profile field missing or empty: experience`);
   }
+  const experience = /** @type {unknown[]} */ (p['experience']);
+  for (const entry of experience) {
+    if (
+      entry === null ||
+      typeof entry !== 'object' ||
+      Array.isArray(entry)
+    ) {
+      continue; // other shape errors handled elsewhere
+    }
+    const e = /** @type {Record<string, unknown>} */ (entry);
+    if ('context' in e && e['context'] !== 'team') {
+      throw new Error(
+        `profile field invalid: experience[].context must be "team" (got "${e['context']}" for company "${e['company']}")`
+      );
+    }
+  }
 
   // --- skills: non-empty array; each entry has a valid level ---
   if (!isNonEmptyArray(p['skills'])) {
@@ -161,6 +197,16 @@ export function validateProfile(profile, filePath = 'content/profile.json') {
     if (!ALLOWED_SKILL_LEVELS.has(/** @type {string} */ (s['level']))) {
       throw new Error(
         `profile field invalid: skills[].level "${s['level']}" is not in the allowed set`
+      );
+    }
+    if (s['category'] === undefined || s['category'] === null) {
+      throw new Error(
+        `profile field invalid: skills[].category is missing for skill "${s['name']}"`
+      );
+    }
+    if (!SKILL_CATEGORIES.includes(/** @type {string} */ (s['category']))) {
+      throw new Error(
+        `profile field invalid: skill "${s['name']}" has unknown category "${s['category']}"`
       );
     }
   }

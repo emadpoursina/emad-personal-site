@@ -1,0 +1,78 @@
+---
+/**
+ * src/components/CaseStudyCard.astro
+ *
+ * Card component representing a single published case study on the index page.
+ */
+
+interface Props {
+  study: Record<string, unknown>;
+}
+
+const { study } = Astro.props;
+const stack = Array.isArray(study.stack) ? (study.stack as string[]) : [];
+---
+
+<article class="case-study-card">
+  <h2>{study.title}</h2>
+  <p class="case-study-problem">{study.problem}</p>
+  <ul class="case-study-stack">
+    {stack.map((item) => (
+      <li>{item}</li>
+    ))}
+  </ul>
+  <a class="case-study-link" href={`/case-studies/${study.slug}`}>Read the case study</a>
+</article>
+
+<style>
+  .case-study-card {
+    background-color: var(--bg-muted);
+    border-radius: 6px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .case-study-card h2 {
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--fg-heading);
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+  }
+
+  .case-study-problem {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--fg);
+    margin-top: 0;
+    margin-bottom: 1rem;
+  }
+
+  .case-study-stack {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.25rem 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .case-study-stack li {
+    background-color: var(--bg);
+    color: var(--fg);
+    padding: 0.25rem 0.625rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+  }
+
+  .case-study-link {
+    display: inline-block;
+    color: var(--fg-link);
+    font-weight: 600;
+    text-decoration: underline;
+  }
+
+  .case-study-link:hover {
+    color: var(--fg-link-hover);
+  }
+</style>

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "prebuild": "node scripts/build-cv.mjs && node scripts/check-contrast.mjs",
+    "prebuild": "node scripts/check-profile.mjs && node scripts/build-cv.mjs && node scripts/check-contrast.mjs",
     "build": "astro build",
     "postbuild": "node scripts/check-cv.mjs && node scripts/check-static-output.mjs",
     "preview": "astro preview",
@@ -23,6 +23,8 @@
     "pdfkit": "^0.15.2"
   },
   "devDependencies": {
+    "ajv": "^8.20.0",
+    "ajv-draft-04": "^1.0.0",
     "pdfjs-dist": "^4.10.38"
   }
 }

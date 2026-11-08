@@ -5,6 +5,8 @@ validation_commands:
   - npm ci
   - npm run build
   - npm test
+  - node scripts/check-agent-output.mjs
+  - node scripts/test-public-routes.mjs
   - node scripts/test-contact-api.mjs
   - node scripts/lighthouse-check.mjs
   - node scripts/verify-container.mjs

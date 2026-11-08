@@ -119,6 +119,13 @@ async function run() {
   let disabledStatus = 0;
   let warningPresent = false;
   let secretsNone = false;
+  let aboutStatus = 0;
+  let caseStudiesStatus = 0;
+  let llmsStatus = 0;
+  let resumeStatus = 0;
+  let apiProfileStatus = 0;
+  let voicedashStatus = 0;
+  let routesPassed = 0;
 
   let sitePort = await getFreePort();
   let sinkPort = await getFreePort();
@@ -230,6 +237,76 @@ async function run() {
     if (healthzStatus !== 200) {
       throw new Error(`Check failed: healthz returned ${healthzStatus}`);
     }
+
+    // 4b. Phase 2 route probes
+    async function probe(path, options = {}) {
+      let res;
+      try {
+        res = await fetch(`http://127.0.0.1:${sitePort}${path}`);
+      } catch (err) {
+        throw new Error(
+          `Check failed for ${path}: expected status ${options.expectedStatus ?? 200}, observed network error: ${err.message}`
+        );
+      }
+      const ct = res.headers.get('content-type') || '';
+      const body = await res.text();
+      const expectedStatus = options.expectedStatus ?? 200;
+      if (res.status !== expectedStatus) {
+        throw new Error(
+          `Check failed for ${path}: expected status ${expectedStatus}, observed ${res.status}`
+        );
+      }
+      if (
+        options.expectedContentTypePrefix &&
+        !ct.toLowerCase().startsWith(options.expectedContentTypePrefix.toLowerCase())
+      ) {
+        throw new Error(
+          `Check failed for ${path}: expected Content-Type starting with ${options.expectedContentTypePrefix}, observed '${ct}'`
+        );
+      }
+      if (options.validateJson) {
+        let json;
+        try {
+          json = JSON.parse(body);
+        } catch (err) {
+          throw new Error(
+            `Check failed for ${path}: expected valid JSON body, observed parse error '${err.message}'`
+          );
+        }
+        const validationErr = options.validateJson(json);
+        if (validationErr) {
+          throw new Error(`Check failed for ${path}: ${validationErr}`);
+        }
+      }
+      return res.status;
+    }
+
+    aboutStatus = await probe('/about', { expectedStatus: 200, expectedContentTypePrefix: 'text/html' });
+    routesPassed++;
+
+    caseStudiesStatus = await probe('/case-studies', { expectedStatus: 200, expectedContentTypePrefix: 'text/html' });
+    routesPassed++;
+
+    llmsStatus = await probe('/llms.txt', { expectedStatus: 200, expectedContentTypePrefix: 'text/plain' });
+    routesPassed++;
+
+    resumeStatus = await probe('/resume.json', { expectedStatus: 200, expectedContentTypePrefix: 'application/json' });
+    routesPassed++;
+
+    apiProfileStatus = await probe('/api/profile', {
+      expectedStatus: 200,
+      expectedContentTypePrefix: 'application/json',
+      validateJson: (json) => {
+        if (!json?.basics?.name || typeof json.basics.name !== 'string' || json.basics.name.trim() === '') {
+          return `expected non-empty basics.name, observed ${JSON.stringify(json?.basics?.name)}`;
+        }
+        return null;
+      },
+    });
+    routesPassed++;
+
+    voicedashStatus = await probe('/case-studies/voicedash', { expectedStatus: 404 });
+    routesPassed++;
 
     // 5. POST one valid message to /api/contact -> 200; db-count -> 1
     const postRes1 = await fetch(`http://127.0.0.1:${sitePort}/api/contact`, {
@@ -394,9 +471,21 @@ async function run() {
     rowsAfter === 1 &&
     disabledStatus === 503 &&
     warningPresent &&
-    secretsNone
+    secretsNone &&
+    aboutStatus === 200 &&
+    caseStudiesStatus === 200 &&
+    llmsStatus === 200 &&
+    resumeStatus === 200 &&
+    apiProfileStatus === 200 &&
+    voicedashStatus === 404 &&
+    routesPassed === 6
   ) {
-    console.log('healthz=200 rows_before=1 rows_after_rebuild=1 disabled=503 warning=present secrets=none');
+    console.log(
+      `healthz=${healthzStatus} rows_before=${rowsBefore} rows_after_rebuild=${rowsAfter} ` +
+      `disabled=${disabledStatus} warning=present secrets=none ` +
+      `about=${aboutStatus} case_studies=${caseStudiesStatus} llms=${llmsStatus} ` +
+      `resume=${resumeStatus} api_profile=${apiProfileStatus} voicedash=${voicedashStatus} routes=${routesPassed}/6`
+    );
     process.exit(0);
   } else {
     console.error('One or more checks did not match expected values.');
