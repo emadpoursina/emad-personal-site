@@ -4,3 +4,7 @@
 validation_commands:
   - npm ci
   - npm run build
+  - npm test
+  - node scripts/test-contact-api.mjs
+  - node scripts/lighthouse-check.mjs
+  - node scripts/verify-container.mjs

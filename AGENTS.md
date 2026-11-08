@@ -10,7 +10,7 @@
 
 - Work is submitted through this project's Hermes Kanban board (`emad-personal-site`).
 - Follow the card's `## Path` and the workflow stage assigned by Hermes.
-- Keep `validation_commands` in `.ainative/project.yaml` accurate. It currently holds a bootstrap TODO that must be replaced once the scaffold runs.
+- Keep `validation_commands` in `.ainative/project.yaml` accurate; it lists the six project validation commands (install, build, unit tests, contact integration, Lighthouse, container) and must stay green from a clean shell.
 - For a `feature`, follow the spec/plan/tasks workflow and its reviews. A `change` is already specified; a `job` runs only its named skill.
 - Ask rather than guessing when a consequential project decision is unclear.
 - Update `PRD.md` (and its change log) when a decision changes scope, stack, or requirements.

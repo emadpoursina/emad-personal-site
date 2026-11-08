@@ -16,6 +16,19 @@ node_modules/
 dist/
 .astro/
 
+# Generated CV (reproducible from profile.json)
+public/cv.pdf
+
+# Evidence directory (Lighthouse, sink logs — never committed)
+.evidence/
+
+# Tester evidence bundles (never committed)
+specs/*/evidence.md
+specs/*/evidence/
+
+# Local cache
+.cache/
+
 # OS / editor
 .DS_Store
 .vscode/

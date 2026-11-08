@@ -1,0 +1,66 @@
+---
+/**
+ * src/components/Footer.astro
+ *
+ * Site footer with direct contact email and secondary links.
+ * Landmarks: <footer> with native <nav>.
+ * No client-side scripts.
+ */
+
+import { APPROVED_CONTACT_EMAIL } from '../lib/profile.mjs';
+---
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <p class="footer-email">
+      <a href={`mailto:${APPROVED_CONTACT_EMAIL}`}>{APPROVED_CONTACT_EMAIL}</a>
+    </p>
+    <nav class="footer-nav" aria-label="Footer navigation">
+      <ul class="footer-links">
+        <li><a href="/" class="footer-link">Home</a></li>
+        <li><a href="/contact" class="footer-link">Contact</a></li>
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: 1px solid var(--bg-muted);
+    background-color: var(--bg-muted);
+    color: var(--fg-footer);
+  }
+
+  .footer-inner {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .footer-email {
+    margin: 0;
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 1.25rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .footer-link {
+    color: var(--fg-link);
+    text-decoration: none;
+  }
+
+  .footer-link:hover {
+    color: var(--fg-link-hover);
+    text-decoration: underline;
+  }
+</style>

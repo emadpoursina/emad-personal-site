@@ -1,0 +1,389 @@
+{
+  "name": "Emad Poursina",
+  "headline": "AI and Agentic Systems Engineer with a strong foundation in software development",
+  "workAuthorization": "Requires employer-sponsored work authorization.",
+  "availability": "one month notice",
+  "targetRoles": [
+    "Software Engineer",
+    "Backend Engineer",
+    "Full-Stack Engineer",
+    "AI Engineer",
+    "Agentic Systems Engineer"
+  ],
+  "targetCountries": [
+    "Canada",
+    "Ireland",
+    "United Kingdom",
+    "Netherlands",
+    "Portugal"
+  ],
+  "bio": "Software engineer with 7+ years of production Node.js work, now focused on AI and agentic systems. I take a problem end to end — requirements, architecture, implementation, deployment and release — and choose deterministic software, automation or agents based on what the problem actually needs.",
+  "contactEmail": "emad.poursina.work@gmail.com",
+  "links": {
+    "linkedin": "https://www.linkedin.com/in/emadpoursina/",
+    "github": "https://github.com/emadpoursina"
+  },
+  "experience": [
+    {
+      "role": "Technical Lead",
+      "company": "Hamed Mosaddeghian",
+      "start": "2019-03",
+      "end": "2023-12",
+      "points": [
+        "Led development and maintenance of web platforms.",
+        "Managed technical architecture and deployment processes.",
+        "Coordinated marketing-related technical integrations.",
+        "Oversaw reporting systems and performance optimization."
+      ]
+    },
+    {
+      "role": "WordPress Developer",
+      "company": "Freelancer (Self-employed)",
+      "start": "2020-06",
+      "end": "present",
+      "points": [
+        "Designed and developed websites from ready-made templates and Figma designs.",
+        "Built personal, company, and eCommerce websites.",
+        "Developed custom plugins, themes, and scripts.",
+        "Performed performance optimization and security hardening."
+      ]
+    },
+    {
+      "role": "Full-Stack JavaScript Engineer",
+      "company": "Freelancer (Self-employed)",
+      "start": "2023-01",
+      "end": "present",
+      "points": [
+        "Built different SaaS projects across React, Next.js, and React Native.",
+        "Developed social platforms, quiz systems, CRM, and task management applications.",
+        "Contract work on VoiceDash (backend & DevOps) and Villion (mobile)."
+      ]
+    },
+    {
+      "role": "Full-Stack Developer → Backend & DevOps Engineer",
+      "company": "VoiceDash",
+      "start": "2025-01",
+      "end": "present",
+      "points": [
+        "Developed and maintained the AI dictation SaaS (Electron desktop + Node.js backend).",
+        "Owned Docker Compose deployment, staging/production environments, and release process.",
+        "Performed code reviews, weekly reporting, and task assignment for other developers.",
+        "Aligned server and desktop client releases; managed tags, rollbacks, and rollout risk.",
+        "Refactored AI-generated MVP incrementally toward a stable, scalable architecture.",
+        "Introduced an agentic coding layer: RTK, specs.md (Ponytail), and Codebase Memory MCP for team workflows."
+      ]
+    },
+    {
+      "role": "Full-Stack Developer (mostly mobile app)",
+      "company": "Villion",
+      "start": "2025-11",
+      "end": "present",
+      "points": [
+        "Joined mid-project on a remote team; primary focus on the React Native iOS member app.",
+        "Started with manual scenario testing on a complex luxury concierge app; built Miro flowcharts to map user paths and surface edge cases and bugs.",
+        "Progressed from small fixes and polish to component work and full features as trust grew.",
+        "Refactored AI-generated code in the mobile codebase toward clearer structure.",
+        "Redesigned and reimplemented the trip feature with legacy support after fixing bad architecture."
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "name": "Node.js",
+      "level": "Expert"
+    },
+    {
+      "name": "Express",
+      "level": "Expert"
+    },
+    {
+      "name": "NestJS",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "TypeScript",
+      "level": "Advanced"
+    },
+    {
+      "name": "REST API Design",
+      "level": "Expert"
+    },
+    {
+      "name": "GraphQL",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "Authentication Systems",
+      "level": "Advanced"
+    },
+    {
+      "name": "JWT Authentication",
+      "level": "Advanced"
+    },
+    {
+      "name": "OAuth2 / Passport.js",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "Role-Based Access Control",
+      "level": "Advanced"
+    },
+    {
+      "name": "WebSockets / Socket.IO",
+      "level": "Advanced"
+    },
+    {
+      "name": "WebSockets / Real-time (SignalR)",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "Serverless Functions",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "Stripe Payments",
+      "level": "Advanced"
+    },
+    {
+      "name": "AI Integration (LLM/STT/TTS)",
+      "level": "Intermediate"
+    },
+    {
+      "name": "Microservices",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "PostgreSQL",
+      "level": "Advanced"
+    },
+    {
+      "name": "MongoDB",
+      "level": "Expert"
+    },
+    {
+      "name": "Redis",
+      "level": "Intermediate"
+    },
+    {
+      "name": "Prisma",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "TypeORM",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "React",
+      "level": "Expert"
+    },
+    {
+      "name": "Next.js",
+      "level": "Advanced"
+    },
+    {
+      "name": "React Native / Expo",
+      "level": "Advanced"
+    },
+    {
+      "name": "Redux / Zustand / Jotai",
+      "level": "Intermediate"
+    },
+    {
+      "name": "HTML / CSS / Tailwind",
+      "level": "Expert"
+    },
+    {
+      "name": "Docker",
+      "level": "Expert"
+    },
+    {
+      "name": "Docker Compose",
+      "level": "Advanced"
+    },
+    {
+      "name": "Release Management",
+      "level": "Intermediate"
+    },
+    {
+      "name": "Git Branching Workflows",
+      "level": "Advanced"
+    },
+    {
+      "name": "Multi-environment Deployment",
+      "level": "Advanced"
+    },
+    {
+      "name": "Nginx",
+      "level": "Advanced"
+    },
+    {
+      "name": "Linux",
+      "level": "Advanced"
+    },
+    {
+      "name": "GitHub Actions / CI/CD",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "Azure Functions",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "Azure Blob Storage",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "Azure SignalR",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "Azure Communication (Email/SMS)",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "Netlify",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "AWS EC2",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "AWS S3",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "AWS RDS",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "AWS Lambda",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "Jest (Unit)",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "Jest (Integration)",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "Supertest",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "WordPress (Custom Development)",
+      "level": "Expert"
+    },
+    {
+      "name": "Electron",
+      "level": "Advanced"
+    },
+    {
+      "name": "System Architecture",
+      "level": "Advanced"
+    },
+    {
+      "name": "Agile / Scrum",
+      "level": "Intermediate"
+    },
+    {
+      "name": "Brownfield / Legacy Refactoring",
+      "level": "Intermediate"
+    },
+    {
+      "name": "Manual QA & Test Planning",
+      "level": "Intermediate"
+    },
+    {
+      "name": "Code Review & Pull Requests",
+      "level": "Advanced"
+    },
+    {
+      "name": "Product & Release Judgment",
+      "level": "Intermediate"
+    },
+    {
+      "name": "Remote Team Collaboration",
+      "level": "Expert"
+    },
+    {
+      "name": "Agentic Coding Workflows",
+      "level": "Intermediate"
+    },
+    {
+      "name": "specs.md (FIRE Flow)",
+      "level": "Intermediate"
+    },
+    {
+      "name": "Ponytail",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "RTK (rtk-ai)",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "Codebase Memory MCP",
+      "level": "Beginner / Learning"
+    },
+    {
+      "name": "Model Selection & Harness Design",
+      "level": "Beginner / Learning"
+    }
+  ],
+  "projects": [
+    {
+      "name": "AgenticCoding",
+      "description": "End-to-end agentic coding framework built around a Plan → Implementation → Validation → Ship loop with two human checkpoints (initial planning, final UAT).",
+      "url": "https://github.com/emadpoursina/agenticCoding"
+    },
+    {
+      "name": "VoiceDash",
+      "description": "AI dictation SaaS — Electron desktop client and Node.js backend; owned backend, Docker Compose deployment and releases.",
+      "url": "https://voicedash.ai"
+    },
+    {
+      "name": "Villion",
+      "description": "Luxury concierge platform — primary work on the React Native iOS member app.",
+      "url": "https://joinvillion.com"
+    },
+    {
+      "name": "Job-offer CV generator",
+      "description": "Self-directed tool that tailors a CV to a specific job offer.",
+      "url": ""
+    },
+    {
+      "name": "Job-offer cover-letter generator",
+      "description": "Self-directed tool that tailors a cover letter to a specific job offer.",
+      "url": ""
+    },
+    {
+      "name": "Personal Hermes assistant",
+      "description": "Ongoing experimentation: instructions, knowledge base, workflows, tools and persistent tasks for a personal agent.",
+      "url": ""
+    }
+  ],
+  "education": [
+    {
+      "degree": "Associate Degree in Computer Engineering",
+      "institution": "Yazd University",
+      "year": "2019 – 2023"
+    }
+  ],
+  "languages": [
+    {
+      "name": "Farsi (Persian)",
+      "level": "Native"
+    },
+    {
+      "name": "English",
+      "level": "Fluent — written and spoken"
+    },
+    {
+      "name": "German",
+      "level": "A1 — currently learning"
+    }
+  ]
+}

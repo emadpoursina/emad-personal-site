@@ -1,0 +1,106 @@
+/*
+ * src/styles/tokens.css
+ *
+ * Design tokens: color palettes for light and dark themes.
+ * - Light palette targets >= 7:1 contrast for body text, never below 4.5:1 for any text pair.
+ * - Dark palette same constraint.
+ * - Focus ring >= 3:1 against both page backgrounds.
+ *
+ * --pair-<name>: --<fg-token> on --<bg-token>;
+ * Token names include the leading --.
+ */
+
+/* ---- Light theme ---- */
+[data-theme="light"] {
+  /* Backgrounds */
+  --bg:          #ffffff;
+  --bg-muted:    #f5f5f5;
+  --bg-form:     #fafafa;
+
+  /* Foreground / text */
+  --fg:          #111111;
+  --fg-muted:    #555555;
+  --fg-heading:  #0d0d0d;
+  --fg-footer:   #444444;
+  --fg-link:     #0a5eb0;
+  --fg-link-hover: #073d75;
+
+  /* Button / form text */
+  --fg-btn:      #ffffff;
+  --bg-btn:      #0a5eb0;
+  --fg-btn-hover: #ffffff;
+  --bg-btn-hover: #073d75;
+
+  /* Focus */
+  --focus-ring:  #2563eb;
+
+  /* Declared text/background pairs (fg token on bg token) */
+  --pair-body:        --fg on --bg;
+  --pair-muted:       --fg-muted on --bg;
+  --pair-heading:     --fg-heading on --bg;
+  --pair-footer:      --fg-footer on --bg-muted;
+  --pair-link:        --fg-link on --bg;
+  --pair-link-hover:  --fg-link-hover on --bg;
+  --pair-btn:         --fg-btn on --bg-btn;
+  --pair-form-label:  --fg on --bg-form;
+}
+
+/* ---- Dark theme ---- */
+[data-theme="dark"] {
+  /* Backgrounds */
+  --bg:          #0f0f0f;
+  --bg-muted:    #1a1a1a;
+  --bg-form:     #141414;
+
+  /* Foreground / text */
+  --fg:          #e8e8e8;
+  --fg-muted:    #a0a0a0;
+  --fg-heading:  #f0f0f0;
+  --fg-footer:   #b0b0b0;
+  --fg-link:     #60a5fa;
+  --fg-link-hover: #93c5fd;
+
+  /* Button / form text */
+  --fg-btn:      #0f0f0f;
+  --bg-btn:      #60a5fa;
+  --fg-btn-hover: #0f0f0f;
+  --bg-btn-hover: #93c5fd;
+
+  /* Focus */
+  --focus-ring:  #60a5fa;
+
+  /* Declared text/background pairs */
+  --pair-body:        --fg on --bg;
+  --pair-muted:       --fg-muted on --bg;
+  --pair-heading:     --fg-heading on --bg;
+  --pair-footer:      --fg-footer on --bg-muted;
+  --pair-link:        --fg-link on --bg;
+  --pair-link-hover:  --fg-link-hover on --bg;
+  --pair-btn:         --fg-btn on --bg-btn;
+  --pair-form-label:  --fg on --bg-form;
+}
+
+/* ---- :root defaults to light values ---- */
+:root {
+  /* Backgrounds */
+  --bg:          #ffffff;
+  --bg-muted:    #f5f5f5;
+  --bg-form:     #fafafa;
+
+  /* Foreground / text */
+  --fg:          #111111;
+  --fg-muted:    #555555;
+  --fg-heading:  #0d0d0d;
+  --fg-footer:   #444444;
+  --fg-link:     #0a5eb0;
+  --fg-link-hover: #073d75;
+
+  /* Button / form text */
+  --fg-btn:      #ffffff;
+  --bg-btn:      #0a5eb0;
+  --fg-btn-hover: #ffffff;
+  --bg-btn-hover: #073d75;
+
+  /* Focus */
+  --focus-ring:  #2563eb;
+}
