@@ -19,6 +19,7 @@
   ],
   "bio": "Software engineer with 7+ years of production Node.js work, now focused on AI and agentic systems. I take a problem end to end — requirements, architecture, implementation, deployment and release — and choose deterministic software, automation or agents based on what the problem actually needs.",
   "contactEmail": "emad.poursina.work@gmail.com",
+  "lastUpdated": "2026-11-08",
   "links": {
     "linkedin": "https://www.linkedin.com/in/emadpoursina/",
     "github": "https://github.com/emadpoursina"
@@ -84,253 +85,315 @@
         "Progressed from small fixes and polish to component work and full features as trust grew.",
         "Refactored AI-generated code in the mobile codebase toward clearer structure.",
         "Redesigned and reimplemented the trip feature with legacy support after fixing bad architecture."
-      ]
+      ],
+      "context": "team"
     }
   ],
   "skills": [
     {
       "name": "Node.js",
-      "level": "Expert"
+      "level": "Expert",
+      "category": "Backend"
     },
     {
       "name": "Express",
-      "level": "Expert"
+      "level": "Expert",
+      "category": "Backend"
     },
     {
       "name": "NestJS",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "Backend"
     },
     {
       "name": "TypeScript",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "Backend"
     },
     {
       "name": "REST API Design",
-      "level": "Expert"
+      "level": "Expert",
+      "category": "Backend"
     },
     {
       "name": "GraphQL",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "Backend"
     },
     {
       "name": "Authentication Systems",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "Backend"
     },
     {
       "name": "JWT Authentication",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "Backend"
     },
     {
       "name": "OAuth2 / Passport.js",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "Backend"
     },
     {
       "name": "Role-Based Access Control",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "Backend"
     },
     {
       "name": "WebSockets / Socket.IO",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "Backend"
     },
     {
       "name": "WebSockets / Real-time (SignalR)",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "Backend"
     },
     {
       "name": "Serverless Functions",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "Backend"
     },
     {
       "name": "Stripe Payments",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "Backend"
     },
     {
       "name": "AI Integration (LLM/STT/TTS)",
-      "level": "Intermediate"
+      "level": "Intermediate",
+      "category": "Backend"
     },
     {
       "name": "Microservices",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "Backend"
     },
     {
       "name": "PostgreSQL",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "Databases"
     },
     {
       "name": "MongoDB",
-      "level": "Expert"
+      "level": "Expert",
+      "category": "Databases"
     },
     {
       "name": "Redis",
-      "level": "Intermediate"
+      "level": "Intermediate",
+      "category": "Databases"
     },
     {
       "name": "Prisma",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "Databases"
     },
     {
       "name": "TypeORM",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "Databases"
     },
     {
       "name": "React",
-      "level": "Expert"
+      "level": "Expert",
+      "category": "Frontend"
     },
     {
       "name": "Next.js",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "Frontend"
     },
     {
       "name": "React Native / Expo",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "Frontend"
     },
     {
       "name": "Redux / Zustand / Jotai",
-      "level": "Intermediate"
+      "level": "Intermediate",
+      "category": "Frontend"
     },
     {
       "name": "HTML / CSS / Tailwind",
-      "level": "Expert"
+      "level": "Expert",
+      "category": "Frontend"
     },
     {
       "name": "Docker",
-      "level": "Expert"
+      "level": "Expert",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "Docker Compose",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "Release Management",
-      "level": "Intermediate"
+      "level": "Intermediate",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "Git Branching Workflows",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "Multi-environment Deployment",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "Nginx",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "Linux",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "GitHub Actions / CI/CD",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "Azure Functions",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "Azure Blob Storage",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "Azure SignalR",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "Azure Communication (Email/SMS)",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "Netlify",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "AWS EC2",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "AWS S3",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "AWS RDS",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "AWS Lambda",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "DevOps & Infrastructure"
     },
     {
       "name": "Jest (Unit)",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "Testing"
     },
     {
       "name": "Jest (Integration)",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "Testing"
     },
     {
       "name": "Supertest",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "Testing"
     },
     {
       "name": "WordPress (Custom Development)",
-      "level": "Expert"
+      "level": "Expert",
+      "category": "Other Technical Skills"
     },
     {
       "name": "Electron",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "Other Technical Skills"
     },
     {
       "name": "System Architecture",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "Other Technical Skills"
     },
     {
       "name": "Agile / Scrum",
-      "level": "Intermediate"
+      "level": "Intermediate",
+      "category": "Other Technical Skills"
     },
     {
       "name": "Brownfield / Legacy Refactoring",
-      "level": "Intermediate"
+      "level": "Intermediate",
+      "category": "Other Technical Skills"
     },
     {
       "name": "Manual QA & Test Planning",
-      "level": "Intermediate"
+      "level": "Intermediate",
+      "category": "Other Technical Skills"
     },
     {
       "name": "Code Review & Pull Requests",
-      "level": "Advanced"
+      "level": "Advanced",
+      "category": "Other Technical Skills"
     },
     {
       "name": "Product & Release Judgment",
-      "level": "Intermediate"
+      "level": "Intermediate",
+      "category": "Other Technical Skills"
     },
     {
       "name": "Remote Team Collaboration",
-      "level": "Expert"
+      "level": "Expert",
+      "category": "Other Technical Skills"
     },
     {
       "name": "Agentic Coding Workflows",
-      "level": "Intermediate"
+      "level": "Intermediate",
+      "category": "Agentic Coding & AI Tooling"
     },
     {
       "name": "specs.md (FIRE Flow)",
-      "level": "Intermediate"
+      "level": "Intermediate",
+      "category": "Agentic Coding & AI Tooling"
     },
     {
       "name": "Ponytail",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "Agentic Coding & AI Tooling"
     },
     {
       "name": "RTK (rtk-ai)",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "Agentic Coding & AI Tooling"
     },
     {
       "name": "Codebase Memory MCP",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "Agentic Coding & AI Tooling"
     },
     {
       "name": "Model Selection & Harness Design",
-      "level": "Beginner / Learning"
+      "level": "Beginner / Learning",
+      "category": "Agentic Coding & AI Tooling"
     }
   ],
   "projects": [

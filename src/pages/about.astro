@@ -1,0 +1,223 @@
+---
+/**
+ * src/pages/about.astro
+ *
+ * About page (F3): professional summary, experience timeline, skills grouped
+ * by category, education, and languages. Every fact comes from
+ * content/profile.json — nothing is inferred or invented.
+ */
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SkillGroup from '../components/SkillGroup.astro';
+import { loadProfile } from '../lib/profile.mjs';
+import { SKILL_CATEGORY_ORDER } from '../lib/skills.mjs';
+import { formatRange } from '../lib/dates.mjs';
+
+export const prerender = true;
+
+const profile = loadProfile();
+const experience = /** @type {any[]} */ (profile.experience ?? []);
+const skills = /** @type {any[]} */ (profile.skills ?? []);
+const education = /** @type {any[]} */ (profile.education ?? []);
+const languages = /** @type {any[]} */ (profile.languages ?? []);
+---
+
+<BaseLayout
+  title={`About — ${profile.name}`}
+  description={`Professional summary, experience, skills, education, and languages for ${profile.name}.`}
+>
+  <div class="about-container">
+    <h1>About {profile.name}</h1>
+
+    <section id="summary" aria-labelledby="summary-heading">
+      <h2 id="summary-heading">Summary</h2>
+      <p class="summary-text">{profile.bio}</p>
+    </section>
+
+    <section id="experience" aria-labelledby="experience-heading">
+      <h2 id="experience-heading">Experience</h2>
+      {experience.map((job) => (
+        <article class="experience-entry">
+          <h3>{job.role}</h3>
+          <p class="experience-meta">
+            <span class="company">{job.company}</span>
+            <span class="dates">{formatRange(job.start, job.end)}</span>
+          </p>
+          {job.context === 'team' && (
+            <p class="team-context">
+              <strong>Team context</strong> — This work was done within a team.
+            </p>
+          )}
+          <ul class="experience-points">
+            {job.points.map((point) => (
+              <li>{point}</li>
+            ))}
+          </ul>
+        </article>
+      ))}
+    </section>
+
+    <section id="skills" aria-labelledby="skills-heading">
+      <h2 id="skills-heading">Skills</h2>
+      {SKILL_CATEGORY_ORDER.map((category) => (
+        <SkillGroup
+          category={category}
+          skills={skills.filter((skill) => skill.category === category)}
+        />
+      ))}
+    </section>
+
+    <section id="education" aria-labelledby="education-heading">
+      <h2 id="education-heading">Education</h2>
+      {education.map((entry) => (
+        <article class="education-entry">
+          <h3>{entry.degree}</h3>
+          <p class="education-meta">
+            <span class="institution">{entry.institution}</span>
+            <span class="years">{entry.year}</span>
+          </p>
+        </article>
+      ))}
+    </section>
+
+    <section id="languages" aria-labelledby="languages-heading">
+      <h2 id="languages-heading">Languages</h2>
+      <ul class="language-list">
+        {languages.map((language) => (
+          <li>
+            <span class="language-name">{language.name}</span>
+            <span class="language-level">{language.level}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .about-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--fg-heading);
+    margin-top: 0;
+    margin-bottom: 2rem;
+  }
+
+  section {
+    margin-bottom: 2.5rem;
+  }
+
+  section h2 {
+    font-size: 1.5rem;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--bg-muted);
+    padding-bottom: 0.5rem;
+  }
+
+  .summary-text {
+    font-size: 1.0625rem;
+    line-height: 1.7;
+    color: var(--fg);
+  }
+
+  .experience-entry {
+    margin-bottom: 2rem;
+  }
+
+  .experience-entry h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--fg-heading);
+    margin-top: 0;
+    margin-bottom: 0.25rem;
+  }
+
+  .experience-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    color: var(--fg-muted);
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+  }
+
+  .company {
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .team-context {
+    background-color: var(--bg-muted);
+    color: var(--fg);
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+  }
+
+  .experience-points {
+    margin: 0;
+    padding-left: 1.25rem;
+    line-height: 1.6;
+  }
+
+  .experience-points li {
+    margin-bottom: 0.25rem;
+  }
+
+  .education-entry {
+    margin-bottom: 1.5rem;
+  }
+
+  .education-entry h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--fg-heading);
+    margin-top: 0;
+    margin-bottom: 0.25rem;
+  }
+
+  .education-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    color: var(--fg-muted);
+    margin: 0;
+  }
+
+  .institution {
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .language-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .language-list li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    padding: 0.375rem 0;
+    border-bottom: 1px solid var(--bg-muted);
+  }
+
+  .language-name {
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .language-level {
+    color: var(--fg-muted);
+  }
+</style>

@@ -7,8 +7,8 @@
  *  - Discovers chrome-headless-shell or installs Chromium via Playwright
  *  - Resolves browser path by glob
  *  - Starts built standalone server on an ephemeral port
- *  - Executes Lighthouse 11.7.1 three times against the home page
- *  - Gates on median Performance >= 95, Accessibility = 100, LCP < 2000 ms
+ *  - Executes Lighthouse 11.7.1 three times per page (/, /about, /case-studies/rousta-tv)
+ *  - Gates on median Performance >= 95, Accessibility = 100, LCP < 2000 ms per page
  *  - Supports --self-test to verify gate logic without launching a browser
  */
 
@@ -23,6 +23,12 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const ENTRY = path.join(ROOT, 'dist', 'server', 'entry.mjs');
 const EVIDENCE_DIR = path.join(ROOT, '.evidence');
+
+export const PAGES = [
+  { name: 'home', path: '/' },
+  { name: 'about', path: '/about' },
+  { name: 'rousta-tv', path: '/case-studies/rousta-tv' },
+];
 
 /**
  * Resolves chrome-headless-shell under PLAYWRIGHT_BROWSERS_PATH by glob:
@@ -405,80 +411,98 @@ async function main() {
       throw err;
     }
 
-    const url = `http://127.0.0.1:${port}/`;
-    const runs = [];
+    const pageFailures = [];
 
-    for (let i = 1; i <= 3; i++) {
-      const outputPath = path.join(EVIDENCE_DIR, `lighthouse-run${i}.json`);
-      const relOutputPath = path.relative(ROOT, outputPath);
+    for (const page of PAGES) {
+      const url = `http://127.0.0.1:${port}${page.path}`;
+      const runs = [];
 
-      const lhArgs = [
-        '--yes',
-        'lighthouse@11.7.1',
-        url,
-        '--only-categories=performance,accessibility',
-        '--chrome-flags=--headless=new --no-sandbox --disable-dev-shm-usage',
-        '--output=json',
-        `--output-path=${relOutputPath}`,
-        '--form-factor=mobile',
-        '--throttling-method=simulate',
-        '--quiet',
-      ];
+      for (let i = 1; i <= 3; i++) {
+        const outputPath = path.join(
+          EVIDENCE_DIR,
+          `lighthouse-${page.name}-run${i}.json`
+        );
+        const relOutputPath = path.relative(ROOT, outputPath);
 
-      execFileSync('npx', lhArgs, {
-        cwd: ROOT,
-        env: {
-          ...process.env,
-          CHROME_PATH: chromePath,
-          npm_config_cache: npmCacheDir,
-        },
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
+        const lhArgs = [
+          '--yes',
+          'lighthouse@11.7.1',
+          url,
+          '--only-categories=performance,accessibility',
+          '--chrome-flags=--headless=new --no-sandbox --disable-dev-shm-usage',
+          '--output=json',
+          `--output-path=${relOutputPath}`,
+          '--form-factor=mobile',
+          '--throttling-method=simulate',
+          '--quiet',
+        ];
 
-      if (!fs.existsSync(outputPath)) {
-        throw new Error(
-          `Lighthouse run ${i} did not produce expected output at ${outputPath}`
+        execFileSync('npx', lhArgs, {
+          cwd: ROOT,
+          env: {
+            ...process.env,
+            CHROME_PATH: chromePath,
+            npm_config_cache: npmCacheDir,
+          },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+
+        if (!fs.existsSync(outputPath)) {
+          throw new Error(
+            `Lighthouse run ${i} for ${page.name} did not produce expected output at ${outputPath}`
+          );
+        }
+
+        const report = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
+        const perf = Math.round(
+          (report.categories?.performance?.score ?? 0) * 100
+        );
+        const a11y = Math.round(
+          (report.categories?.accessibility?.score ?? 0) * 100
+        );
+        const lcp = Math.round(
+          report.audits?.['largest-contentful-paint']?.numericValue ?? 0
+        );
+
+        runs.push({
+          run: i,
+          perf,
+          a11y,
+          lcp,
+          performance: perf,
+          accessibility: a11y,
+          lcp_ms: lcp,
+        });
+
+        console.log(
+          `page ${page.name} (${page.path}) run ${i}: performance=${perf} accessibility=${a11y} lcp_ms=${lcp}`
         );
       }
 
-      const report = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
-      const perf = Math.round((report.categories?.performance?.score ?? 0) * 100);
-      const a11y = Math.round(
-        (report.categories?.accessibility?.score ?? 0) * 100
-      );
-      const lcp = Math.round(
-        report.audits?.['largest-contentful-paint']?.numericValue ?? 0
-      );
-
-      runs.push({
-        run: i,
-        perf,
-        a11y,
-        lcp,
-        performance: perf,
-        accessibility: a11y,
-        lcp_ms: lcp,
-      });
-
+      const gate = evaluateGate(runs);
       console.log(
-        `run ${i}: performance=${perf} accessibility=${a11y} lcp_ms=${lcp}`
+        `page ${page.name} median: performance=${gate.medians.perf} accessibility=${gate.medians.a11y} lcp_ms=${gate.medians.lcp}`
       );
+
+      if (!gate.pass) {
+        pageFailures.push({ page, failures: gate.failures });
+      }
     }
 
-    const gate = evaluateGate(runs);
-    console.log(
-      `median: performance=${gate.medians.perf} accessibility=${gate.medians.a11y} lcp_ms=${gate.medians.lcp}`
-    );
-
-    if (!gate.pass) {
-      console.error(`lighthouse gate failed: ${gate.failures.join('; ')}`);
+    if (pageFailures.length > 0) {
+      console.error('lighthouse gate failed:');
+      for (const { page, failures } of pageFailures) {
+        console.error(
+          `  page ${page.name} (${page.path}): ${failures.join('; ')}`
+        );
+      }
       // Set the exit code and return instead of process.exit() so the finally
       // block runs: process.exit() would skip cleanup() and leak the server.
       process.exitCode = 1;
       return;
     }
 
-    console.log('lighthouse gate ok');
+    console.log('lighthouse gate ok (3 pages)');
     process.exitCode = 0;
   } finally {
     cleanup();

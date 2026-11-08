@@ -35,7 +35,7 @@
 - [ ] About page shows summary, experience timeline, skills with honest levels, education, and languages, with Learning-level skills marked as such
 - [ ] `/llms.txt`, `/resume.json`, and `/api/profile` return valid content that matches the profile, and every page has Person JSON-LD
 **Out of scope:** The AI assistant, the cover-letter generator, and the admin panel. V1.1 case studies (F14, F15).
-**Spec:** none
+**Spec:** specs/002-case-studies-about-agent-layer
 
 ## Phase 3: Ask-me assistant and admin settings
 

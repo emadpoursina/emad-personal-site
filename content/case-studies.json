@@ -1,0 +1,31 @@
+{
+  "studies": [
+    {
+      "slug": "rousta-tv",
+      "title": "Rousta TV",
+      "status": "published",
+      "visibility": "public",
+      "problem": "A Persian-language media and community platform for Iranian villages — rural news, village micro-sites, a marketplace, eco-tourism content, live streaming, chat rooms, and member profiles with a wallet.",
+      "contribution": "Sole fullstack developer over roughly three months. Built the entire application end to end — data model, server, APIs, and pages. Development only: did not own product design, content, or product management.",
+      "outcome": "Live in production and publicly used.",
+      "stack": ["MongoDB", "Express", "React", "Node.js"],
+      "publicLink": { "url": "https://roustatv.com/" }
+    },
+    {
+      "slug": "namehamal",
+      "title": "NamehAmal",
+      "status": "published",
+      "visibility": "private",
+      "problem": "A personal time-tracking web application for everyday use.",
+      "contribution": "Built it end to end as a personal project.",
+      "outcome": "In personal use.",
+      "stack": ["Next.js", "macOS desktop app (wrapper around the web app)"],
+      "publicLink": null
+    },
+    {
+      "slug": "voicedash",
+      "title": "VoiceDash",
+      "status": "draft"
+    }
+  ]
+}
