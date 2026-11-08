@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 
 import { SKILL_CATEGORY_ORDER, displayLevel } from '../src/lib/skills.mjs';
 import { publishedStudies } from '../src/lib/case-studies.mjs';
+import { DRAFT_SLUG, DRAFT_URL, firstDifference } from './lib/contract.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -37,13 +38,12 @@ const profile = JSON.parse(readFileSync(path.join(ROOT, 'content', 'profile.json
 const studiesDoc = JSON.parse(readFileSync(path.join(ROOT, 'content', 'case-studies.json'), 'utf8'));
 const published = publishedStudies(studiesDoc);
 
-const DRAFT_SLUG = 'voicedash';
 // "VoiceDash" is approved public CV content (an employer role and a profile
 // project since Phase 1); the banned thing is the DRAFT CASE STUDY. On the two
 // surfaces that carry employment history the assertion targets the draft study
 // URL; llms.txt and sitemap.xml contain no employment data and keep the strict
-// bare-substring ban.
-const DRAFT_URL = `/case-studies/${DRAFT_SLUG}`;
+// bare-substring ban. DRAFT_SLUG, DRAFT_URL and firstDifference live in
+// scripts/lib/contract.mjs (shared, S2).
 
 /** @type {string[]} */
 const failures = [];
@@ -122,50 +122,6 @@ function headingTexts(html, tag) {
 function mainInnerHtml(html) {
   const match = /<main\b[^>]*>([\s\S]*?)<\/main>/i.exec(html);
   return match ? match[1] : null;
-}
-
-/**
- * Strict deep equality; returns null when equal.
- * @param {unknown} actual
- * @param {unknown} expected
- * @param {string} [pathName]
- * @returns {string | null}
- */
-function firstDifference(actual, expected, pathName = '$') {
-  if (Object.is(actual, expected)) return null;
-  if (typeof actual !== typeof expected) {
-    return `${pathName}: expected ${typeof expected}, got ${typeof actual}`;
-  }
-  if (actual === null || expected === null || typeof actual !== 'object') {
-    return `${pathName}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`;
-  }
-  const aIsArray = Array.isArray(actual);
-  const eIsArray = Array.isArray(expected);
-  if (aIsArray !== eIsArray) {
-    return `${pathName}: expected ${eIsArray ? 'array' : 'object'}, got ${aIsArray ? 'array' : 'object'}`;
-  }
-  if (aIsArray) {
-    const a = /** @type {unknown[]} */ (actual);
-    const e = /** @type {unknown[]} */ (expected);
-    if (a.length !== e.length) return `${pathName}: expected length ${e.length}, got ${a.length}`;
-    for (let i = 0; i < a.length; i++) {
-      const diff = firstDifference(a[i], e[i], `${pathName}[${i}]`);
-      if (diff) return diff;
-    }
-    return null;
-  }
-  const a = /** @type {Record<string, unknown>} */ (actual);
-  const e = /** @type {Record<string, unknown>} */ (expected);
-  const aKeys = Object.keys(a).sort();
-  const eKeys = Object.keys(e).sort();
-  if (aKeys.length !== eKeys.length || aKeys.some((k, i) => k !== eKeys[i])) {
-    return `${pathName}: keys differ — expected {${eKeys.join(',')}}, got {${aKeys.join(',')}}`;
-  }
-  for (const key of eKeys) {
-    const diff = firstDifference(a[key], e[key], `${pathName}.${key}`);
-    if (diff) return diff;
-  }
-  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -633,6 +589,25 @@ try {
   }
 
   {
+    // FR-307: /api/profile must answer in under 500 ms excluding network
+    // latency. Loopback only, payload fully consumed, slowest of 5 samples.
+    const samples = [];
+    for (let i = 0; i < 5; i++) {
+      const started = performance.now();
+      const res = await fetch(`${base}/api/profile`);
+      await res.arrayBuffer();
+      samples.push(performance.now() - started);
+      if (res.status !== 200) fail('/api/profile', `FR-307 timing probe got status ${res.status}`);
+    }
+    const slowest = Math.max(...samples);
+    if (slowest >= 500) {
+      fail('/api/profile', `FR-307 timing: slowest of 5 = ${slowest.toFixed(1)} ms, budget 500 ms`);
+    } else {
+      pass(`FR-307 /api/profile < 500 ms (slowest of 5: ${slowest.toFixed(1)} ms)`);
+    }
+  }
+
+  {
     // Astro's origin check runs before routing, so a browser-shaped same-origin
     // POST is the honest probe: it must fall through to 404, not reach a handler.
     const { res } = await fetchRoute('/api/profile', {
@@ -648,10 +623,10 @@ try {
   // -------------------------------------------------------------------------
 
   {
-    // The static handler serves prerendered .xml as `application/xml` with no
-    // charset parameter; UTF-8 is declared in the XML prolog instead. The
-    // literal `; charset=utf-8` in contracts/http-routes.md is not reproducible
-    // through @astrojs/node's static file path (finding F3).
+    // Prerendered static files are served by @astrojs/node with the MIME type
+    // of their extension; for .xml that is `application/xml` with no charset
+    // parameter, so UTF-8 is declared in the XML prolog instead. The contract
+    // row was amended to `application/xml` + prolog requirement (W1).
     const { res, body } = await fetchRoute('/sitemap.xml', { contentType: 'application/xml' });
     if (res.status === 200) {
       if (!/^<\?xml\b[^>]*encoding=["']UTF-8["']/i.test(body)) {

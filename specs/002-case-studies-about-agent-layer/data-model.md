@@ -192,7 +192,7 @@ One block per rendered page, injected by `BaseLayout.astro`:
 
 ## Derived output: `/sitemap.xml`
 
-Deterministic XML, `application/xml; charset=utf-8`. Entries in this fixed order, absolute URLs from the site URL:
+Deterministic XML, `application/xml` (UTF-8 in the XML prolog; the static file path adds no charset parameter — W1). Entries in this fixed order, absolute URLs from the site URL:
 
 1. `/`
 2. `/about`

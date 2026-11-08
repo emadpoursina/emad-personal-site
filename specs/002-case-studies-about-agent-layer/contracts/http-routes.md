@@ -17,7 +17,7 @@ All routes are served by the single Astro Node server behind `docker compose up`
 | GET | `/case-studies/<unknown>` | — | falls through to `404.astro` | 404 | `text/html; charset=utf-8` | static default |
 | GET | `/llms.txt` | `src/pages/llms.txt.ts` | **prerendered (new)** | 200 | `text/plain; charset=utf-8` | static default |
 | GET | `/resume.json` | `src/pages/resume.json.ts` | **prerendered (new)** | 200 | `application/json; charset=utf-8` | static default |
-| GET | `/sitemap.xml` | `src/pages/sitemap.xml.ts` | **prerendered (new)** | 200 | `application/xml; charset=utf-8` | static default |
+| GET | `/sitemap.xml` | `src/pages/sitemap.xml.ts` | **prerendered (new)** | 200 | `application/xml` (UTF-8 declared in the XML prolog) | static default |
 | GET | `/api/profile` | `src/pages/api/profile.ts` | **on demand (new)** | 200 | `application/json; charset=utf-8` | `public, max-age=300` |
 | GET | `/cv.pdf` | generated build artifact | static | 200 | `application/pdf` | static default |
 | GET | `/contact` | `src/pages/contact.astro` | prerendered | 200 | `text/html; charset=utf-8` | static default |

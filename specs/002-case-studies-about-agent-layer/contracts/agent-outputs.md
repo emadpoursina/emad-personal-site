@@ -94,4 +94,4 @@ Injected once by `src/layouts/BaseLayout.astro`; `check-agent-output.mjs` walks 
 
 ## 5. `/sitemap.xml`
 
-`application/xml; charset=utf-8`; fixed order `/`, `/about`, `/case-studies`, `/contact`, then published studies in content order. Absolute URLs from the configured site URL. No `<lastmod>`. Draft slugs absent. The check parses the XML and compares the URL path list exactly.
+`application/xml` with UTF-8 declared in the XML prolog (prerendered `.xml` is served by the adapter's static path, which adds no charset parameter — W1); fixed order `/`, `/about`, `/case-studies`, `/contact`, then published studies in content order. Absolute URLs from the configured site URL. No `<lastmod>`. Draft slugs absent. The check parses the XML and compares the URL path list exactly.

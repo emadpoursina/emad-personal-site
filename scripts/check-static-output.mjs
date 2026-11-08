@@ -24,6 +24,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SKILL_CATEGORY_ORDER } from '../src/lib/skills.mjs';
 import { formatRange } from '../src/lib/dates.mjs';
+import { DRAFT_SLUG } from './lib/contract.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -322,8 +323,8 @@ if (!existsSync(csIndexPath)) {
     );
   }
 
-  if (/voicedash/i.test(csIndexHtml)) {
-    fail('US1-1: dist/client/case-studies/index.html contains draft "voicedash"');
+  if (new RegExp(DRAFT_SLUG, 'i').test(csIndexHtml)) {
+    fail(`US1-1: dist/client/case-studies/index.html contains draft "${DRAFT_SLUG}"`);
   }
 }
 
@@ -358,8 +359,8 @@ for (const detail of detailPages) {
       );
     }
 
-    if (/voicedash/i.test(html)) {
-      fail(`US1-2: ${detail.path} contains draft "voicedash"`);
+    if (new RegExp(DRAFT_SLUG, 'i').test(html)) {
+      fail(`US1-2: ${detail.path} contains draft "${DRAFT_SLUG}"`);
     }
   }
 }
@@ -416,7 +417,7 @@ if (existsSync(namehamalPath)) {
 }
 
 // 5. Draft absence
-const voicedashPath = join(DIST, 'case-studies', 'voicedash');
+const voicedashPath = join(DIST, 'case-studies', DRAFT_SLUG);
 if (existsSync(voicedashPath)) {
   fail(`US1-5: draft absence violated: ${voicedashPath} exists as a file or directory`);
 }
