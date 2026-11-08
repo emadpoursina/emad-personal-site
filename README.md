@@ -29,8 +29,8 @@ npm run dev               # http://localhost:4321
 
 The pages read `content/profile.json`, which is validated on load. The build fails if the profile
 is missing, a required field is empty, or one of the approved strings differs. Content in that
-file is transcribed from `master-profile.md` — nothing is invented, and learning-level skills stay
-labelled as such.
+file is transcribed from the owner's `master-profile.md`, which stays local and is not in this
+repository — nothing is invented, and learning-level skills stay labelled as such.
 
 ### Environment
 
@@ -98,8 +98,9 @@ there, or the browser's same-origin form submission will be rejected with 403.
 
 ## Known gates and deferred checks
 
-- **OQ-1 (content source): answered.** `master-profile.md` v3.0 is in the repository and
-  `content/profile.json` is transcribed from it; no placeholder content is permitted.
+- **OQ-1 (content source): answered.** `content/profile.json` is transcribed from the owner's
+  `master-profile.md` v3.0, which stays local and is not in this repository; no placeholder content
+  is permitted.
 - **OQ-2 (live email): deferred by the owner.** This host has no SMTP relay, so automated checks use
   the local sink and the documented disabled path. A live send to Gmail remains an owner-signed
   manual check.
