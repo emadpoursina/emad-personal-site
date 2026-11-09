@@ -11,7 +11,7 @@
  * No side effects, no file I/O.
  */
 
-import { absoluteUrl, getSiteUrl } from './site.mjs';
+import { absoluteUrl, getSiteUrl, PUBLIC_PAGE_PATHS } from './site.mjs';
 import { knowsAbout } from './skills.mjs';
 import { publishedStudies } from './case-studies.mjs';
 
@@ -290,12 +290,7 @@ export function buildPersonJsonLd(profile) {
  */
 export function buildSitemap(studiesDoc) {
   const published = publishedStudies(studiesDoc);
-  const locs = [
-    absoluteUrl('/'),
-    absoluteUrl('/about'),
-    absoluteUrl('/case-studies'),
-    absoluteUrl('/contact')
-  ];
+  const locs = PUBLIC_PAGE_PATHS.map((path) => absoluteUrl(path));
 
   for (const study of published) {
     locs.push(absoluteUrl(`/case-studies/${study.slug}`));

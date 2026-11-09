@@ -9,6 +9,7 @@
  */
 
 import { spawn } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
@@ -108,6 +109,13 @@ async function run() {
   const sinkPort = await getFreePort();
   const serverPortA = await getFreePort();
 
+  // Generate admin credentials and encryption key for Instance A
+  const adminPassword = 'local-test-password';
+  const salt16 = crypto.randomBytes(16);
+  const hash64 = crypto.scryptSync(adminPassword, salt16, 64, { N: 16384, r: 8, p: 1 });
+  const adminPasswordHash = `scrypt$16384$8$1$${salt16.toString('base64')}$${hash64.toString('base64')}`;
+  const encryptionKey = crypto.randomBytes(32).toString('base64');
+
   // Start smtp-sink
   sinkProc = spawn(process.execPath, [SINK_SCRIPT, '--port', String(sinkPort)], {
     cwd: ROOT,
@@ -140,6 +148,8 @@ async function run() {
         SMTP_SECURE: 'false',
         SMTP_USER: 'test',
         SMTP_PASS: 'test',
+        ADMIN_PASSWORD_HASH: adminPasswordHash,
+        ENCRYPTION_KEY: encryptionKey,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     }
@@ -232,10 +242,149 @@ async function run() {
   if (rows1[0].delivery_status !== 'sent') {
     throw new Error(`Instance A: expected delivery_status='sent', got '${rows1[0].delivery_status}'`);
   }
-  const sent = rows1.filter((r) => r.delivery_status === 'sent').length;
 
-  // --- Request 2: Malformed email ---
+  // --- SMTP settings take effect without restart (F3 / Phase 3 proof) ---
+  // 2a. Stop sink A and wait until its port stops accepting connections (max ~5s)
+  killProc(sinkProc);
+  sinkProc = null;
+  const waitSinkAStart = Date.now();
+  while (Date.now() - waitSinkAStart < 5000) {
+    const isClosed = await new Promise((resolve) => {
+      const sock = net.createConnection({ port: sinkPort, host: '127.0.0.1' }, () => {
+        sock.destroy();
+        resolve(false);
+      });
+      sock.on('error', () => resolve(true));
+    });
+    if (isClosed) break;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+
+  // 2b. Allocate sinkPortB; start a second scripts/smtp-sink.mjs --port <sinkPortB>; poll TCP; snapshot sink log line count
+  const sinkPortB = await getFreePort();
+  sinkProc = spawn(process.execPath, [SINK_SCRIPT, '--port', String(sinkPortB)], {
+    cwd: ROOT,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  await pollTcp(sinkPortB);
+  const sinkLinesBeforeB = fs.existsSync(SINK_LOG)
+    ? fs.readFileSync(SINK_LOG, 'utf8').trim().split('\n').filter(Boolean).length
+    : 0;
+
+  // 2c. Log in: POST /api/admin/login -> 303; capture Set-Cookie; assert it contains admin_session=, HttpOnly, SameSite=Strict, Max-Age=28800
+  const loginRes = await fetch(`http://127.0.0.1:${serverPortA}/api/admin/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Origin': `http://127.0.0.1:${serverPortA}`,
+    },
+    body: 'password=local-test-password',
+    redirect: 'manual',
+  });
+  if (loginRes.status !== 303) {
+    throw new Error(`Admin login: expected status 303, got ${loginRes.status}`);
+  }
+  const setCookies = loginRes.headers.getSetCookie
+    ? loginRes.headers.getSetCookie()
+    : [loginRes.headers.get('set-cookie') || ''];
+  const setCookieHeader = setCookies.join('; ');
+  if (!setCookieHeader.includes('admin_session=')) {
+    throw new Error(`Admin login: Set-Cookie missing admin_session=, got: ${setCookieHeader}`);
+  }
+  if (!setCookieHeader.includes('HttpOnly')) {
+    throw new Error(`Admin login: Set-Cookie missing HttpOnly, got: ${setCookieHeader}`);
+  }
+  if (!setCookieHeader.includes('SameSite=Strict')) {
+    throw new Error(`Admin login: Set-Cookie missing SameSite=Strict, got: ${setCookieHeader}`);
+  }
+  if (!setCookieHeader.includes('Max-Age=28800')) {
+    throw new Error(`Admin login: Set-Cookie missing Max-Age=28800, got: ${setCookieHeader}`);
+  }
+
+  const sessionMatch = setCookieHeader.match(/admin_session=[^;]+/);
+  if (!sessionMatch) {
+    throw new Error('Admin login: could not parse admin_session cookie value');
+  }
+  const sessionCookie = sessionMatch[0];
+
+  // 2d. Save SMTP: POST /api/admin/settings with cookie, same Origin, form body -> 303 Location: /admin?saved=1
+  const settingsRes = await fetch(`http://127.0.0.1:${serverPortA}/api/admin/settings`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Origin': `http://127.0.0.1:${serverPortA}`,
+      'Cookie': sessionCookie,
+    },
+    body: `smtpHost=127.0.0.1&smtpPort=${sinkPortB}&smtpSecure=&smtpUser=&smtpPass=&smtpFrom=`,
+    redirect: 'manual',
+  });
+  if (settingsRes.status !== 303) {
+    throw new Error(`Admin settings: expected status 303, got ${settingsRes.status}`);
+  }
+  const location = settingsRes.headers.get('location');
+  if (location !== '/admin?saved=1') {
+    throw new Error(`Admin settings: expected Location '/admin?saved=1', got '${location}'`);
+  }
+
+  // 2e. Send second valid contact message from same IP with name Grace Hopper -> 200 {ok:true,status:'sent'}
+  const formBody2 = 'name=Grace+Hopper&email=grace%40example.com&message=Hello+from+Grace+Hopper.';
   const res2 = await fetch(contactUrlA, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Origin': `http://127.0.0.1:${serverPortA}`,
+      'Accept': 'application/json',
+    },
+    body: formBody2,
+  });
+  if (res2.status !== 200) {
+    throw new Error(`Second valid message (Grace Hopper): expected status 200, got ${res2.status}`);
+  }
+  const json2 = await res2.json();
+  if (!json2.ok || json2.status !== 'sent') {
+    throw new Error(`Second valid message: expected {ok:true, status:'sent'}, got ${JSON.stringify(json2)}`);
+  }
+
+  // Poll the sink log until it grows
+  const sinkStartWaitB = Date.now();
+  let lastSinkRecordB = null;
+  while (Date.now() - sinkStartWaitB < 5000) {
+    if (fs.existsSync(SINK_LOG)) {
+      const lines = fs.readFileSync(SINK_LOG, 'utf8').trim().split('\n').filter(Boolean);
+      if (lines.length > sinkLinesBeforeB) {
+        lastSinkRecordB = JSON.parse(lines[lines.length - 1]);
+        break;
+      }
+    }
+    await new Promise((r) => setTimeout(r, 50));
+  }
+
+  if (!lastSinkRecordB) {
+    throw new Error('Sink B: message was not recorded in .evidence/smtp-sink.jsonl');
+  }
+  if (lastSinkRecordB.subject !== 'Contact form: Grace Hopper') {
+    throw new Error(`Sink B: expected subject 'Contact form: Grace Hopper', got '${lastSinkRecordB.subject}'`);
+  }
+  if (
+    !lastSinkRecordB.body.includes('Grace Hopper') ||
+    !lastSinkRecordB.body.includes('grace@example.com') ||
+    !lastSinkRecordB.body.includes('Hello from Grace Hopper.')
+  ) {
+    throw new Error(`Sink B: body missing Grace Hopper, grace@example.com, or message. Got: ${lastSinkRecordB.body}`);
+  }
+
+  // Verify SQLite row count after 2nd valid submission
+  const rowsAfterGrace = dbA.prepare('SELECT * FROM contact_messages').all();
+  if (rowsAfterGrace.length !== 2) {
+    throw new Error(`Instance A: expected exactly 2 rows after second valid submission, got ${rowsAfterGrace.length}`);
+  }
+  const sent = rowsAfterGrace.filter((r) => r.delivery_status === 'sent').length;
+  if (sent !== 2) {
+    throw new Error(`Instance A: expected 2 sent rows, got ${sent}`);
+  }
+
+  // --- Request 2 (now 3rd POST): Malformed email ---
+  const res3 = await fetch(contactUrlA, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -247,20 +396,20 @@ async function run() {
       message: 'Hello from the integration test.',
     }),
   });
-  if (res2.status !== 400) {
-    throw new Error(`Request 2: expected status 400, got ${res2.status}`);
+  if (res3.status !== 400) {
+    throw new Error(`Request 2: expected status 400, got ${res3.status}`);
   }
-  const json2 = await res2.json();
-  if (!json2.errors || !json2.errors.email) {
-    throw new Error(`Request 2: expected errors.email, got ${JSON.stringify(json2)}`);
+  const json3 = await res3.json();
+  if (!json3.errors || !json3.errors.email) {
+    throw new Error(`Request 2: expected errors.email, got ${JSON.stringify(json3)}`);
   }
   const countAfter2 = dbA.prepare('SELECT COUNT(*) as c FROM contact_messages').get().c;
-  if (countAfter2 !== 1) {
-    throw new Error(`Request 2: row count should still be 1, got ${countAfter2}`);
+  if (countAfter2 !== 2) {
+    throw new Error(`Request 2: row count should still be 2, got ${countAfter2}`);
   }
 
-  // --- Request 3: Empty/whitespace message ---
-  const res3 = await fetch(contactUrlA, {
+  // --- Request 3 (now 4th POST): Empty/whitespace message ---
+  const res4 = await fetch(contactUrlA, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -272,20 +421,20 @@ async function run() {
       message: '   ',
     }),
   });
-  if (res3.status !== 400) {
-    throw new Error(`Request 3: expected status 400, got ${res3.status}`);
+  if (res4.status !== 400) {
+    throw new Error(`Request 3: expected status 400, got ${res4.status}`);
   }
-  const json3 = await res3.json();
-  if (!json3.errors || !json3.errors.message) {
-    throw new Error(`Request 3: expected errors.message, got ${JSON.stringify(json3)}`);
+  const json4 = await res4.json();
+  if (!json4.errors || !json4.errors.message) {
+    throw new Error(`Request 3: expected errors.message, got ${JSON.stringify(json4)}`);
   }
   const countAfter3 = dbA.prepare('SELECT COUNT(*) as c FROM contact_messages').get().c;
-  if (countAfter3 !== 1) {
-    throw new Error(`Request 3: row count should still be 1, got ${countAfter3}`);
+  if (countAfter3 !== 2) {
+    throw new Error(`Request 3: row count should still be 2, got ${countAfter3}`);
   }
 
-  // --- Request 4: Message of 5,001 characters ---
-  const res4 = await fetch(contactUrlA, {
+  // --- Request 4 (now 5th POST): Message of 5,001 characters ---
+  const res5 = await fetch(contactUrlA, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -297,21 +446,20 @@ async function run() {
       message: 'a'.repeat(5001),
     }),
   });
-  if (res4.status !== 400) {
-    throw new Error(`Request 4: expected status 400, got ${res4.status}`);
+  if (res5.status !== 400) {
+    throw new Error(`Request 4: expected status 400, got ${res5.status}`);
   }
-  const json4 = await res4.json();
-  if (!json4.errors || !json4.errors.message) {
-    throw new Error(`Request 4: expected errors.message, got ${JSON.stringify(json4)}`);
+  const json5 = await res5.json();
+  if (!json5.errors || !json5.errors.message) {
+    throw new Error(`Request 4: expected errors.message, got ${JSON.stringify(json5)}`);
   }
   const countAfter4 = dbA.prepare('SELECT COUNT(*) as c FROM contact_messages').get().c;
-  if (countAfter4 !== 1) {
-    throw new Error(`Request 4: row count should still be 1, got ${countAfter4}`);
+  if (countAfter4 !== 2) {
+    throw new Error(`Request 4: row count should still be 2, got ${countAfter4}`);
   }
 
-  // --- Request 5: Header-injection attempt via CR/LF in the name (critic W2) ---
-  // Still the 5th POST, so the rate-limit quota math below is unchanged.
-  const res5 = await fetch(contactUrlA, {
+  // --- Request 5 (now 6th POST): Header-injection attempt via CR/LF in the name (critic W2) ---
+  const res6 = await fetch(contactUrlA, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -323,21 +471,21 @@ async function run() {
       message: 'Fifth attempt message.',
     }),
   });
-  if (res5.status !== 400) {
-    throw new Error(`Request 5 (CRLF name): expected status 400, got ${res5.status}`);
+  if (res6.status !== 400) {
+    throw new Error(`Request 5 (CRLF name): expected status 400, got ${res6.status}`);
   }
-  const json5 = await res5.json();
-  if (!json5.errors || !json5.errors.name) {
-    throw new Error(`Request 5 (CRLF name): expected errors.name, got ${JSON.stringify(json5)}`);
+  const json6 = await res6.json();
+  if (!json6.errors || !json6.errors.name) {
+    throw new Error(`Request 5 (CRLF name): expected errors.name, got ${JSON.stringify(json6)}`);
   }
   const countAfter5 = dbA.prepare('SELECT COUNT(*) as c FROM contact_messages').get().c;
-  if (countAfter5 !== 1) {
-    throw new Error(`Request 5: row count should still be 1, got ${countAfter5}`);
+  if (countAfter5 !== 2) {
+    throw new Error(`Request 5: row count should still be 2, got ${countAfter5}`);
   }
-  const invalid = countAfter5 - 1; // 0 rows written for invalid submissions
+  const invalid = countAfter5 - 2; // 0 rows written for invalid submissions
 
-  // --- Request 6: 6th POST from same IP (rate limited) ---
-  const res6 = await fetch(contactUrlA, {
+  // --- Request 6 (now 7th POST from same IP): Rate limited ---
+  const res7 = await fetch(contactUrlA, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -349,21 +497,21 @@ async function run() {
       message: 'Rate limit test.',
     }),
   });
-  if (res6.status !== 429) {
-    throw new Error(`Request 6: expected status 429, got ${res6.status}`);
+  if (res7.status !== 429) {
+    throw new Error(`Request 6: expected status 429, got ${res7.status}`);
   }
-  const rate_limited = res6.status;
-  const retryAfterHeader = res6.headers.get('retry-after');
+  const rate_limited = res7.status;
+  const retryAfterHeader = res7.headers.get('retry-after');
   if (!retryAfterHeader) {
     throw new Error('Request 6: expected Retry-After header');
   }
-  const json6 = await res6.json();
-  if (json6.error !== 'rate_limited') {
-    throw new Error(`Request 6: expected error:'rate_limited', got '${json6.error}'`);
+  const json7 = await res7.json();
+  if (json7.error !== 'rate_limited') {
+    throw new Error(`Request 6: expected error:'rate_limited', got '${json7.error}'`);
   }
   const rows = dbA.prepare('SELECT COUNT(*) as c FROM contact_messages').get().c;
-  if (rows !== 1) {
-    throw new Error(`Request 6: row count should still be 1, got ${rows}`);
+  if (rows !== 2) {
+    throw new Error(`Request 6: row count should still be 2, got ${rows}`);
   }
 
   // Close dbA and terminate Instance A + sink

@@ -3,8 +3,14 @@
  *
  * SQLite database layer using node:sqlite DatabaseSync.
  * - Opens lazily on first use so a broken DB never crashes server boot.
- * - Applies schema version 1 on open (contact_messages table + index).
- * - Exports: insertMessage, markSent, markFailed, countMessages, isHealthy, close.
+ * - Applies schema version 1 and 2 on open.
+ * - Exports:
+ *     contact: insertMessage, markSent, markFailed, countMessages
+ *     settings: getSetting, getAllSettings, setSetting, deleteSetting, applySettings
+ *     sessions: createSession, getSession, deleteSession, deleteExpiredSessions
+ *     questions: insertQuestion, countQuestions
+ *     counters: consumeDailyAsk
+ *     lifecycle: isHealthy, close
  */
 
 import { DatabaseSync } from 'node:sqlite';
@@ -22,7 +28,7 @@ let _healthy = null;
 let _errorReason = null;
 
 // Schema version this code expects.
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 const CREATE_TABLE_SQL = `
   CREATE TABLE IF NOT EXISTS contact_messages (
@@ -39,6 +45,53 @@ const CREATE_TABLE_SQL = `
 const CREATE_INDEX_SQL = `
   CREATE INDEX IF NOT EXISTS idx_contact_messages_created_at
     ON contact_messages (created_at DESC);
+`.trim();
+
+const SCHEMA_V2_SQL = `
+CREATE TABLE IF NOT EXISTS settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  id         TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  expires_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires_at
+  ON admin_sessions (expires_at);
+
+CREATE TABLE IF NOT EXISTS ask_questions (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  question   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ask_questions_created_at
+  ON ask_questions (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS ask_daily_counters (
+  day        TEXT PRIMARY KEY,
+  count      INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+`.trim();
+
+const UPSERT_SETTING_SQL = `
+INSERT INTO settings (key, value, updated_at)
+VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+ON CONFLICT(key) DO UPDATE SET
+  value = excluded.value,
+  updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+`.trim();
+
+const CONSUME_DAILY_ASK_SQL = `
+INSERT INTO ask_daily_counters (day, count, updated_at)
+VALUES (?, 1, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+ON CONFLICT(day) DO UPDATE SET
+  count = count + 1,
+  updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+RETURNING count;
 `.trim();
 
 /**
@@ -65,10 +118,14 @@ function getDb() {
         db.prepare('PRAGMA user_version').get()
       );
 
-    if (version < SCHEMA_VERSION) {
+    if (version < 1) {
       // Apply schema version 1
       db.exec(CREATE_TABLE_SQL);
       db.exec(CREATE_INDEX_SQL);
+    }
+    if (version < 2) {
+      // Apply schema version 2
+      db.exec(SCHEMA_V2_SQL);
       db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
     }
 
@@ -143,6 +200,220 @@ export function countMessages() {
   );
   return row.n;
 }
+
+// ---------------------------------------------------------------------------
+// Settings accessors
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the string value for a setting key, or null if not found.
+ * @param {string} key
+ * @returns {string | null}
+ */
+export function getSetting(key) {
+  const db = getDb();
+  if (!db) throw new Error('Database is not available');
+
+  const row = /** @type {{ value: string } | undefined} */ (
+    db.prepare('SELECT value FROM settings WHERE key = ?').get(key)
+  );
+  return row ? row.value : null;
+}
+
+/**
+ * Returns a plain object mapping all keys to their string values.
+ * @returns {Record<string, string>}
+ */
+export function getAllSettings() {
+  const db = getDb();
+  if (!db) throw new Error('Database is not available');
+
+  const rows = /** @type {Array<{ key: string; value: string }>} */ (
+    db.prepare('SELECT key, value FROM settings').all()
+  );
+  const result = {};
+  for (const row of rows) {
+    result[row.key] = row.value;
+  }
+  return result;
+}
+
+/**
+ * Upserts a setting, refreshing updated_at.
+ * @param {string} key
+ * @param {string} value
+ */
+export function setSetting(key, value) {
+  const db = getDb();
+  if (!db) throw new Error('Database is not available');
+
+  db.prepare(UPSERT_SETTING_SQL).run(key, value);
+}
+
+/**
+ * Deletes a setting row by key.
+ * @param {string} key
+ */
+export function deleteSetting(key) {
+  const db = getDb();
+  if (!db) throw new Error('Database is not available');
+
+  db.prepare('DELETE FROM settings WHERE key = ?').run(key);
+}
+
+/**
+ * Applies a batch of setting upserts and deletes within a single transaction.
+ * Rolls back and rethrows on any error.
+ * @param {Record<string, string>} sets
+ * @param {string[]} [deletes]
+ */
+export function applySettings(sets, deletes = []) {
+  const db = getDb();
+  if (!db) throw new Error('Database is not available');
+
+  db.exec('BEGIN');
+  try {
+    if (sets) {
+      const upsertStmt = db.prepare(UPSERT_SETTING_SQL);
+      for (const [key, value] of Object.entries(sets)) {
+        upsertStmt.run(key, value);
+      }
+    }
+    if (deletes && deletes.length > 0) {
+      const deleteStmt = db.prepare('DELETE FROM settings WHERE key = ?');
+      for (const key of deletes) {
+        deleteStmt.run(key);
+      }
+    }
+    db.exec('COMMIT');
+  } catch (err) {
+    try {
+      db.exec('ROLLBACK');
+    } catch {
+      // ignore rollback error
+    }
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Admin session accessors
+// ---------------------------------------------------------------------------
+
+/**
+ * Inserts an admin session row.
+ * @param {string} id
+ * @param {string} expiresAt - ISO-8601 UTC timestamp
+ */
+export function createSession(id, expiresAt) {
+  const db = getDb();
+  if (!db) throw new Error('Database is not available');
+
+  db.prepare('INSERT INTO admin_sessions (id, expires_at) VALUES (?, ?)').run(id, expiresAt);
+}
+
+/**
+ * Retrieves an admin session by id without expiry filtering.
+ * @param {string} id
+ * @returns {{ id: string; created_at: string; expires_at: string } | null}
+ */
+export function getSession(id) {
+  const db = getDb();
+  if (!db) throw new Error('Database is not available');
+
+  const row = /** @type {{ id: string; created_at: string; expires_at: string } | undefined} */ (
+    db.prepare('SELECT id, created_at, expires_at FROM admin_sessions WHERE id = ?').get(id)
+  );
+  if (!row) return null;
+  return {
+    id: row.id,
+    created_at: row.created_at,
+    expires_at: row.expires_at,
+  };
+}
+
+/**
+ * Deletes an admin session by id.
+ * @param {string} id
+ */
+export function deleteSession(id) {
+  const db = getDb();
+  if (!db) throw new Error('Database is not available');
+
+  db.prepare('DELETE FROM admin_sessions WHERE id = ?').run(id);
+}
+
+/**
+ * Deletes admin sessions where expires_at <= nowIso.
+ * @param {string} nowIso - ISO-8601 UTC timestamp
+ * @returns {number} number of deleted sessions
+ */
+export function deleteExpiredSessions(nowIso) {
+  const db = getDb();
+  if (!db) throw new Error('Database is not available');
+
+  const result = db.prepare('DELETE FROM admin_sessions WHERE expires_at <= ?').run(nowIso);
+  return Number(result.changes);
+}
+
+// ---------------------------------------------------------------------------
+// Ask question log accessors
+// ---------------------------------------------------------------------------
+
+/**
+ * Inserts an ask question log row and returns the numeric row id.
+ * @param {string} question
+ * @returns {number}
+ */
+export function insertQuestion(question) {
+  const db = getDb();
+  if (!db) throw new Error('Database is not available');
+
+  const result = db.prepare('INSERT INTO ask_questions (question) VALUES (?)').run(question);
+  return Number(result.lastInsertRowid);
+}
+
+/**
+ * Returns the total number of rows in ask_questions.
+ * @returns {number}
+ */
+export function countQuestions() {
+  const db = getDb();
+  if (!db) throw new Error('Database is not available');
+
+  const row = /** @type {{ n: number }} */ (
+    db.prepare('SELECT COUNT(*) AS n FROM ask_questions').get()
+  );
+  return Number(row.n);
+}
+
+// ---------------------------------------------------------------------------
+// Ask daily counter accessors
+// ---------------------------------------------------------------------------
+
+/**
+ * Atomically consumes one daily ask slot and returns { count, allowed }.
+ * @param {string} day - UTC date string 'YYYY-MM-DD'
+ * @param {number} cap - daily maximum allowed
+ * @returns {{ count: number; allowed: boolean }}
+ */
+export function consumeDailyAsk(day, cap) {
+  const db = getDb();
+  if (!db) throw new Error('Database is not available');
+
+  const row = /** @type {{ count: number }} */ (
+    db.prepare(CONSUME_DAILY_ASK_SQL).get(day)
+  );
+  const count = Number(row.count);
+  return {
+    count,
+    allowed: count <= cap,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Database health and connection lifecycle
+// ---------------------------------------------------------------------------
 
 /**
  * Returns true when the database can be opened and queried, false otherwise.

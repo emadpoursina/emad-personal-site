@@ -34,6 +34,10 @@
   /* Focus */
   --focus-ring:  #2563eb;
 
+  /* Status / feedback */
+  --color-error:   #b91c1c;
+  --color-success: #15803d;
+
   /* Declared text/background pairs (fg token on bg token) */
   --pair-body:        --fg on --bg;
   --pair-muted:       --fg-muted on --bg;
@@ -43,6 +47,8 @@
   --pair-link-hover:  --fg-link-hover on --bg;
   --pair-btn:         --fg-btn on --bg-btn;
   --pair-form-label:  --fg on --bg-form;
+  --pair-error:       --color-error on --bg-form;
+  --pair-success:     --color-success on --bg-form;
 }
 
 /* ---- Dark theme ---- */
@@ -69,6 +75,10 @@
   /* Focus */
   --focus-ring:  #60a5fa;
 
+  /* Status / feedback */
+  --color-error:   #f87171;
+  --color-success: #4ade80;
+
   /* Declared text/background pairs */
   --pair-body:        --fg on --bg;
   --pair-muted:       --fg-muted on --bg;
@@ -78,6 +88,8 @@
   --pair-link-hover:  --fg-link-hover on --bg;
   --pair-btn:         --fg-btn on --bg-btn;
   --pair-form-label:  --fg on --bg-form;
+  --pair-error:       --color-error on --bg-form;
+  --pair-success:     --color-success on --bg-form;
 }
 
 /* ---- :root defaults to light values ---- */
@@ -103,4 +115,8 @@
 
   /* Focus */
   --focus-ring:  #2563eb;
+
+  /* Status / feedback */
+  --color-error:   #b91c1c;
+  --color-success: #15803d;
 }

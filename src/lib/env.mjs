@@ -25,15 +25,96 @@ function warnOnce(key, message) {
 }
 
 /**
+ * Parses an environment variable as a bounded integer.
+ * Falls back to defaultValue and emits one warning if set to an invalid value.
+ * Absent/empty string values return defaultValue without a warning.
+ *
+ * @param {unknown} raw
+ * @param {string} key
+ * @param {number} min
+ * @param {number} max
+ * @param {number} defaultValue
+ * @returns {number}
+ */
+function parseBoundedInteger(raw, key, min, max, defaultValue) {
+  if (raw === undefined || raw === '') {
+    return defaultValue;
+  }
+  const trimmed = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+  if (/^-?\d+$/.test(trimmed)) {
+    const n = Number(trimmed);
+    if (Number.isSafeInteger(n) && n >= min && n <= max) {
+      return n;
+    }
+  }
+  warnOnce(key, `${key} must be an integer between ${min} and ${max}; falling back to ${defaultValue}.`);
+  return defaultValue;
+}
+
+/**
+ * Parses an environment variable as a timeout in milliseconds.
+ * Falls back to defaultValue and emits one warning if set to an invalid value (<= 0 or not an integer).
+ * Clamps any value above maxVal to maxVal.
+ * Absent/empty string values return defaultValue without a warning.
+ *
+ * @param {unknown} raw
+ * @param {number} defaultValue
+ * @param {number} maxVal
+ * @returns {number}
+ */
+function parseTimeoutMs(raw, defaultValue, maxVal) {
+  if (raw === undefined || raw === '') {
+    return defaultValue;
+  }
+  const trimmed = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+  if (/^-?\d+$/.test(trimmed)) {
+    const n = Number(trimmed);
+    if (Number.isSafeInteger(n) && n > 0) {
+      return Math.min(n, maxVal);
+    }
+  }
+  warnOnce('AI_TIMEOUT_MS', `AI_TIMEOUT_MS is invalid; falling back to ${defaultValue}.`);
+  return defaultValue;
+}
+
+/**
  * Returns the parsed, cached configuration object.
  * @returns {Record<string, unknown>}
  */
-function config() {
+export function config() {
   if (_config !== null) return _config;
 
   const smtpHost = process.env.SMTP_HOST ?? '';
   const smtpUser = process.env.SMTP_USER ?? '';
   const smtpPass = process.env.SMTP_PASS ?? '';
+
+  const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH ?? '';
+  const encryptionKey = process.env.ENCRYPTION_KEY ?? '';
+  const aiBaseUrl = process.env.AI_BASE_URL ?? '';
+  const aiModel = process.env.AI_MODEL ?? '';
+  const aiApiKey = process.env.AI_API_KEY ?? '';
+
+  const askDailyCap = parseBoundedInteger(
+    process.env.ASK_DAILY_CAP,
+    'ASK_DAILY_CAP',
+    1,
+    100000,
+    200
+  );
+
+  const askRateLimitPerHour = parseBoundedInteger(
+    process.env.ASK_RATE_LIMIT_PER_HOUR,
+    'ASK_RATE_LIMIT_PER_HOUR',
+    1,
+    1000,
+    10
+  );
+
+  const aiTimeoutMs = parseTimeoutMs(
+    process.env.AI_TIMEOUT_MS,
+    30000,
+    30000
+  );
 
   _config = {
     PORT:                        parseInt(process.env.PORT ?? '4321', 10),
@@ -48,11 +129,29 @@ function config() {
     SMTP_USER:                   smtpUser,
     SMTP_PASS:                   smtpPass,
     SMTP_FROM:                   process.env.SMTP_FROM ?? 'Emad Poursina <emad.poursina.work@gmail.com>',
+    ADMIN_PASSWORD_HASH:         adminPasswordHash,
+    ENCRYPTION_KEY:              encryptionKey,
+    AI_BASE_URL:                 aiBaseUrl,
+    AI_MODEL:                    aiModel,
+    AI_API_KEY:                  aiApiKey,
+    ASK_DAILY_CAP:               askDailyCap,
+    ASK_RATE_LIMIT_PER_HOUR:     askRateLimitPerHour,
+    AI_TIMEOUT_MS:               aiTimeoutMs,
   };
 
   // Warn once when SMTP is not fully configured
   if (!smtpHost || !smtpUser || !smtpPass) {
     warnOnce('smtp', 'Contact email delivery is disabled (SMTP_HOST, SMTP_USER, SMTP_PASS required).');
+  }
+
+  // Warn once when the assistant is unconfigured
+  if (!aiBaseUrl || !aiModel || !aiApiKey) {
+    warnOnce('assistant', 'Ask assistant is unconfigured (AI_BASE_URL, AI_MODEL, AI_API_KEY required).');
+  }
+
+  // Warn once when admin settings are unconfigured
+  if (!adminPasswordHash || !encryptionKey) {
+    warnOnce('admin', 'Admin settings are unconfigured (ADMIN_PASSWORD_HASH, ENCRYPTION_KEY required).');
   }
 
   return _config;

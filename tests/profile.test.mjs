@@ -7,7 +7,13 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateProfile, APPROVED_HEADLINE, SKILL_CATEGORIES } from '../src/lib/profile.mjs';
+import {
+  validateProfile,
+  APPROVED_HEADLINE,
+  SKILL_CATEGORIES,
+  APPROVED_ASSISTANT_DISCLAIMER,
+  APPROVED_ASSISTANT_UNAVAILABLE,
+} from '../src/lib/profile.mjs';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -34,6 +40,14 @@ function validProfile() {
     projects: [{ name: 'Project A', description: 'Desc', url: '' }],
     education: [{ degree: 'BSc', institution: 'University', year: '2020' }],
     languages: [{ name: 'English', level: 'Fluent' }],
+    assistantPolicy: {
+      disclaimer: 'AI assistant. The CV and case studies are the source of record.',
+      unavailable: 'The assistant is unavailable right now',
+      notAvailable: 'I do not have that information in the approved profile. Please use the contact form to ask Emad directly.',
+      salary: 'I cannot discuss salary expectations. Please use the contact form to ask Emad directly.',
+      privateCodebase: 'That codebase is private. You can read the published case studies at {caseStudiesPath}, and use the contact form for anything else.',
+      visa: 'I cannot discuss named visa programs. Requires employer-sponsored work authorization. Please use the contact form for details.',
+    },
   };
 }
 
@@ -61,6 +75,7 @@ test('missing required key names the field in the error', () => {
     'projects',
     'education',
     'languages',
+    'assistantPolicy',
   ];
 
   for (const key of cases) {
@@ -243,4 +258,133 @@ test('experience[].context: "lead" throws and names context; "team" is accepted'
   const p3 = validProfile();
   p3.experience = [{ role: 'Engineer', company: 'Acme', start: '2020', end: 'present', points: [] }];
   assert.doesNotThrow(() => validateProfile(p3), 'missing context should be accepted');
+});
+
+test('missing or non-object assistantPolicy throws and names assistantPolicy', () => {
+  const cases = [undefined, null, {}, 'invalid', []];
+  for (const val of cases) {
+    const p = validProfile();
+    if (val === undefined) {
+      delete p.assistantPolicy;
+    } else {
+      p.assistantPolicy = val;
+    }
+    assert.throws(
+      () => validateProfile(p),
+      (err) => {
+        assert.ok(err instanceof Error);
+        assert.ok(
+          err.message.includes('assistantPolicy'),
+          `expected "assistantPolicy" in error, got: "${err.message}"`
+        );
+        return true;
+      },
+      `should throw for assistantPolicy = ${JSON.stringify(val)}`
+    );
+  }
+});
+
+test('wrong assistantPolicy disclaimer throws and names assistantPolicy and disclaimer', () => {
+  const p = validProfile();
+  p.assistantPolicy.disclaimer = 'Wrong disclaimer';
+  assert.throws(
+    () => validateProfile(p),
+    (err) => {
+      assert.ok(err instanceof Error);
+      assert.ok(
+        err.message.includes('assistantPolicy') && err.message.includes('disclaimer'),
+        `expected "assistantPolicy" and "disclaimer" in error, got: "${err.message}"`
+      );
+      return true;
+    }
+  );
+});
+
+test('wrong assistantPolicy unavailable throws and names assistantPolicy and unavailable', () => {
+  const p = validProfile();
+  p.assistantPolicy.unavailable = 'Wrong unavailable';
+  assert.throws(
+    () => validateProfile(p),
+    (err) => {
+      assert.ok(err instanceof Error);
+      assert.ok(
+        err.message.includes('assistantPolicy') && err.message.includes('unavailable'),
+        `expected "assistantPolicy" and "unavailable" in error, got: "${err.message}"`
+      );
+      return true;
+    }
+  );
+});
+
+test('empty assistantPolicy notAvailable or salary throws and names the field', () => {
+  for (const field of ['notAvailable', 'salary']) {
+    for (const emptyVal of ['', '   ']) {
+      const p = validProfile();
+      p.assistantPolicy[field] = emptyVal;
+      assert.throws(
+        () => validateProfile(p),
+        (err) => {
+          assert.ok(err instanceof Error);
+          assert.ok(
+            err.message.includes('assistantPolicy') && err.message.includes(field),
+            `expected "assistantPolicy" and "${field}" in error, got: "${err.message}"`
+          );
+          return true;
+        },
+        `should throw for empty assistantPolicy.${field}`
+      );
+    }
+  }
+});
+
+test('assistantPolicy privateCodebase missing placeholder throws and names the field', () => {
+  const p = validProfile();
+  p.assistantPolicy.privateCodebase = 'That codebase is private. No placeholder here.';
+  assert.throws(
+    () => validateProfile(p),
+    (err) => {
+      assert.ok(err instanceof Error);
+      assert.ok(
+        err.message.includes('assistantPolicy') && err.message.includes('privateCodebase'),
+        `expected "assistantPolicy" and "privateCodebase" in error, got: "${err.message}"`
+      );
+      return true;
+    }
+  );
+});
+
+test('assistantPolicy visa missing authorization sentence throws and names the field', () => {
+  const p = validProfile();
+  p.assistantPolicy.visa = 'I cannot discuss named visa programs. Please use contact form.';
+  assert.throws(
+    () => validateProfile(p),
+    (err) => {
+      assert.ok(err instanceof Error);
+      assert.ok(
+        err.message.includes('assistantPolicy') && err.message.includes('visa'),
+        `expected "assistantPolicy" and "visa" in error, got: "${err.message}"`
+      );
+      return true;
+    }
+  );
+});
+
+test('missing assistantPolicy subfield throws and names the subfield', () => {
+  const fields = ['disclaimer', 'unavailable', 'notAvailable', 'salary', 'privateCodebase', 'visa'];
+  for (const field of fields) {
+    const p = validProfile();
+    delete p.assistantPolicy[field];
+    assert.throws(
+      () => validateProfile(p),
+      (err) => {
+        assert.ok(err instanceof Error);
+        assert.ok(
+          err.message.includes('assistantPolicy') && err.message.includes(field),
+          `expected "assistantPolicy" and "${field}" in error, got: "${err.message}"`
+        );
+        return true;
+      },
+      `should throw when assistantPolicy.${field} is missing`
+    );
+  }
 });

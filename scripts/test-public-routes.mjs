@@ -14,7 +14,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -356,6 +356,22 @@ try {
   }
 
   // -------------------------------------------------------------------------
+  // 2b. /ask
+  // -------------------------------------------------------------------------
+
+  {
+    const { res, body } = await fetchRoute('/ask', { contentType: 'text/html' });
+    if (res.status === 200) {
+      if (!/<form\b/i.test(body)) fail('/ask', 'missing <form element');
+      if (!body.includes('maxlength="1000"')) fail('/ask', 'missing maxlength="1000"');
+      if (!body.includes('AI assistant. The CV and case studies are the source of record.')) {
+        fail('/ask', 'missing exact text "AI assistant. The CV and case studies are the source of record."');
+      }
+      pass('GET /ask');
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // 3. /case-studies index
   // -------------------------------------------------------------------------
 
@@ -451,6 +467,50 @@ try {
   }
 
   // -------------------------------------------------------------------------
+  // 5b. Admin routes (T034): /admin, /admin/login, /admin/* catch-all
+  // -------------------------------------------------------------------------
+
+  const BANNED_ADMIN_STRINGS = ['Admin settings', '••••', 'v1:', 'ADMIN_PASSWORD_HASH', 'ENCRYPTION_KEY'];
+  const ADMIN_FACTS = ['ADMIN_PASSWORD_HASH', 'ENCRYPTION_KEY', 'admin_session'];
+
+  {
+    const { res, body } = await fetchRoute('/admin', { status: 401, contentType: 'text/html' });
+    if (res.status === 401) {
+      if (!body.includes('noindex')) fail('/admin', 'missing "noindex"');
+      if (!body.includes('href="/admin/login"')) fail('/admin', 'missing href="/admin/login"');
+      for (const banned of BANNED_ADMIN_STRINGS) {
+        if (body.includes(banned)) fail('/admin', `body leaks "${banned}"`);
+      }
+      pass('GET /admin (unauthenticated → 401)');
+    }
+  }
+
+  {
+    const { res, body } = await fetchRoute('/admin/login', { contentType: 'text/html' });
+    if (res.status === 200) {
+      if (!body.includes('noindex')) fail('/admin/login', 'missing "noindex"');
+      if (!/<input\b[^>]*\btype=["']password["']/i.test(body) && !body.includes('type="password"')) {
+        fail('/admin/login', 'missing type="password" input');
+      }
+      if (!/<form\b[^>]*\baction=["']\/api\/admin\/login["']/i.test(body) && !body.includes('action="/api/admin/login"')) {
+        fail('/admin/login', 'missing form action="/api/admin/login"');
+      }
+      for (const banned of BANNED_ADMIN_STRINGS) {
+        if (body.includes(banned)) fail('/admin/login', `body leaks "${banned}"`);
+      }
+      pass('GET /admin/login');
+    }
+  }
+
+  {
+    const { res, body } = await fetchRoute('/admin/whatever', { status: 401, contentType: 'text/html' });
+    if (res.status === 401) {
+      if (!body.includes('noindex')) fail('/admin/whatever', 'missing "noindex"');
+      pass('GET /admin/whatever → 401 (catch-all)');
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // 6. /llms.txt
   // -------------------------------------------------------------------------
 
@@ -473,6 +533,10 @@ try {
       if (!body.includes('/contact')) fail('/llms.txt', 'missing the contact URL');
       if (!body.includes(profile.contactEmail)) fail('/llms.txt', 'missing the contact email');
       if (new RegExp(DRAFT_SLUG, 'i').test(body)) fail('/llms.txt', `contains draft slug "${DRAFT_SLUG}"`);
+      if (body.includes('/admin')) fail('/llms.txt', 'contains "/admin" path');
+      for (const fact of ADMIN_FACTS) {
+        if (body.includes(fact)) fail('/llms.txt', `contains admin fact "${fact}"`);
+      }
       pass('GET /llms.txt');
     }
   }
@@ -516,6 +580,10 @@ try {
           fail('/resume.json', 'projects[] is missing');
         }
         if (new RegExp(DRAFT_URL, 'i').test(body)) fail('/resume.json', `contains draft study URL "${DRAFT_URL}"`);
+        if (body.includes('/admin')) fail('/resume.json', 'contains "/admin" path');
+        for (const fact of ADMIN_FACTS) {
+          if (body.includes(fact)) fail('/resume.json', `contains admin fact "${fact}"`);
+        }
       }
       pass('GET /resume.json');
     }
@@ -582,6 +650,10 @@ try {
         }
 
         if (new RegExp(DRAFT_URL, 'i').test(body)) fail('/api/profile', `contains draft study URL "${DRAFT_URL}"`);
+        if (body.includes('/admin')) fail('/api/profile', 'contains "/admin" path');
+        for (const fact of ADMIN_FACTS) {
+          if (body.includes(fact)) fail('/api/profile', `contains admin fact "${fact}"`);
+        }
       }
 
       pass('GET /api/profile');
@@ -643,11 +715,21 @@ try {
           return loc;
         }
       });
-      const expectedPaths = ['/', '/about', '/case-studies', '/contact',
+      const expectedPaths = ['/', '/about', '/case-studies', '/ask', '/contact',
         ...published.map((study) => `/case-studies/${study.slug}`)];
       const diff = firstDifference(paths, expectedPaths, 'loc[]');
       if (diff) fail('/sitemap.xml', `URL list mismatch: ${diff}`);
       if (new RegExp(DRAFT_SLUG, 'i').test(body)) fail('/sitemap.xml', `contains draft slug "${DRAFT_SLUG}"`);
+
+      const askCount = paths.filter((p) => p === '/ask').length;
+      if (askCount !== 1) fail('/sitemap.xml', `expected /ask exactly once, got ${askCount}`);
+      for (const p of paths) {
+        if (p.startsWith('/admin') || p.includes('/admin')) {
+          fail('/sitemap.xml', `contains admin path "${p}"`);
+        }
+      }
+      if (body.includes('/admin')) fail('/sitemap.xml', 'contains "/admin"');
+
       pass('GET /sitemap.xml');
     }
   }
@@ -658,7 +740,7 @@ try {
 
   {
     /** @type {string[]} */
-    const pages = ['/', '/about', '/case-studies', '/contact',
+    const pages = ['/', '/about', '/case-studies', '/ask', '/contact',
       ...published.map((study) => `/case-studies/${study.slug}`)];
 
     for (const page of pages) {
@@ -668,14 +750,96 @@ try {
       // Nav lives outside <main>; look at the whole document.
       if (!body.includes('href="/about"')) fail(page, 'navigation is missing /about');
       if (!body.includes('href="/case-studies"')) fail(page, 'navigation is missing /case-studies');
+      if (!body.includes('href="/ask"')) fail(page, 'navigation is missing /ask');
       // "VoiceDash" is approved CV content (employer + project); the ban is a
       // link to the DRAFT STUDY.
       if (body.includes(`href="/case-studies/${DRAFT_SLUG}"`)) {
         fail(page, `page links to the draft study /case-studies/${DRAFT_SLUG}`);
       }
       if (main === null) fail(page, 'has no <main> element');
+
+      const askLinks = [...body.matchAll(/<a\b[^>]*\bhref=["']\/ask\/?["'][^>]*>([\s\S]*?)<\/a>/gi)];
+      const hasAskLabel = askLinks.some((m) => {
+        const text = decodeHtmlEntities(m[1].replace(/<[^>]+>/g, '')).trim();
+        return text === 'Ask';
+      });
+      if (!hasAskLabel) {
+        fail(page, 'missing link to /ask labelled "Ask"');
+      }
+
+      if (/href=["']\/admin\b/i.test(body)) {
+        fail(page, 'page contains href="/admin"');
+      }
+
+      const navMatches = [...body.matchAll(/<nav\b[^>]*>([\s\S]*?)<\/nav>/gi)];
+      for (const navMatch of navMatches) {
+        const navHtml = navMatch[1];
+        const navLinks = [...navHtml.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)];
+        for (const link of navLinks) {
+          const attrs = link[1];
+          const text = decodeHtmlEntities(link[2].replace(/<[^>]+>/g, '')).trim();
+          if (/href=["'][^"']*\/admin\b/i.test(attrs)) {
+            fail(page, `navigation contains link to admin: ${link[0]}`);
+          }
+          if (/\badmin\b/i.test(text)) {
+            fail(page, `navigation contains "Admin" nav link: "${text}"`);
+          }
+        }
+      }
     }
     if (failures.length === 0) pass('navigation on every public page');
+  }
+
+  // -------------------------------------------------------------------------
+  // 11. Person JSON-LD in every built page
+  // -------------------------------------------------------------------------
+
+  /**
+   * Recursively finds all *.html files under dir.
+   * @param {string} dir
+   * @returns {string[]}
+   */
+  function findHtmlFiles(dir) {
+    if (!existsSync(dir)) return [];
+    /** @type {string[]} */
+    const out = [];
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        out.push(...findHtmlFiles(fullPath));
+      } else if (entry.isFile() && entry.name.endsWith('.html')) {
+        out.push(fullPath);
+      }
+    }
+    return out;
+  }
+
+  {
+    const htmlFiles = findHtmlFiles(CLIENT);
+    if (htmlFiles.length === 0) {
+      fail('Person JSON-LD', `no *.html files found under ${CLIENT}`);
+    }
+    for (const filePath of htmlFiles) {
+      const rel = path.relative(CLIENT, filePath);
+      const html = readFileSync(filePath, 'utf8');
+      const match = html.match(
+        /<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i
+      );
+      if (!match) {
+        fail(rel, 'missing <script type="application/ld+json"> block');
+        continue;
+      }
+      const jsonLd = match[1];
+      if (jsonLd.includes('/admin')) {
+        fail(rel, 'Person JSON-LD contains "/admin" path');
+      }
+      for (const fact of ADMIN_FACTS) {
+        if (jsonLd.includes(fact)) {
+          fail(rel, `Person JSON-LD contains admin fact "${fact}"`);
+        }
+      }
+    }
+    pass('Person JSON-LD in every built page contains no admin path or facts');
   }
 
   // -------------------------------------------------------------------------

@@ -121,10 +121,15 @@ async function run() {
   let secretsNone = false;
   let aboutStatus = 0;
   let caseStudiesStatus = 0;
+  let askStatus = 0;
   let llmsStatus = 0;
   let resumeStatus = 0;
   let apiProfileStatus = 0;
   let voicedashStatus = 0;
+  let adminStatus = 0;
+  let adminLoginStatus = 0;
+  let askPostStatus = 0;
+  let adminLoginPostStatus = 0;
   let routesPassed = 0;
 
   let sitePort = await getFreePort();
@@ -238,33 +243,50 @@ async function run() {
       throw new Error(`Check failed: healthz returned ${healthzStatus}`);
     }
 
-    // 4b. Phase 2 route probes
+    // 4b. Phase 2 and Phase 3 route probes
     async function probe(path, options = {}) {
+      const {
+        expectedStatus = 200,
+        expectedContentTypePrefix,
+        validateJson,
+        validateBody,
+        method = 'GET',
+        headers,
+        body: reqBody,
+      } = options;
       let res;
       try {
-        res = await fetch(`http://127.0.0.1:${sitePort}${path}`);
+        const fetchOptions = { method };
+        if (headers) fetchOptions.headers = headers;
+        if (reqBody) fetchOptions.body = reqBody;
+        res = await fetch(`http://127.0.0.1:${sitePort}${path}`, fetchOptions);
       } catch (err) {
         throw new Error(
-          `Check failed for ${path}: expected status ${options.expectedStatus ?? 200}, observed network error: ${err.message}`
+          `Check failed for ${path}: expected status ${expectedStatus}, observed network error: ${err.message}`
         );
       }
       const ct = res.headers.get('content-type') || '';
       const body = await res.text();
-      const expectedStatus = options.expectedStatus ?? 200;
       if (res.status !== expectedStatus) {
         throw new Error(
           `Check failed for ${path}: expected status ${expectedStatus}, observed ${res.status}`
         );
       }
       if (
-        options.expectedContentTypePrefix &&
-        !ct.toLowerCase().startsWith(options.expectedContentTypePrefix.toLowerCase())
+        expectedContentTypePrefix &&
+        !ct.toLowerCase().startsWith(expectedContentTypePrefix.toLowerCase())
       ) {
         throw new Error(
-          `Check failed for ${path}: expected Content-Type starting with ${options.expectedContentTypePrefix}, observed '${ct}'`
+          `Check failed for ${path}: expected Content-Type starting with ${expectedContentTypePrefix}, observed '${ct}'`
         );
       }
-      if (options.validateJson) {
+      if (validateBody) {
+        const bodyErr = validateBody(body);
+        if (bodyErr) {
+          throw new Error(`Check failed for ${path}: ${bodyErr}`);
+        }
+      }
+      if (validateJson) {
         let json;
         try {
           json = JSON.parse(body);
@@ -273,7 +295,7 @@ async function run() {
             `Check failed for ${path}: expected valid JSON body, observed parse error '${err.message}'`
           );
         }
-        const validationErr = options.validateJson(json);
+        const validationErr = validateJson(json);
         if (validationErr) {
           throw new Error(`Check failed for ${path}: ${validationErr}`);
         }
@@ -285,6 +307,27 @@ async function run() {
     routesPassed++;
 
     caseStudiesStatus = await probe('/case-studies', { expectedStatus: 200, expectedContentTypePrefix: 'text/html' });
+    routesPassed++;
+
+    askStatus = await probe('/ask', { expectedStatus: 200, expectedContentTypePrefix: 'text/html' });
+    let askRes;
+    try {
+      askRes = await fetch(`http://127.0.0.1:${sitePort}/ask`);
+    } catch (err) {
+      throw new Error(`Check failed for /ask: network error: ${err.message}`);
+    }
+    const askBody = await askRes.text();
+    if (!askBody.includes('<form')) {
+      throw new Error('Check failed for /ask: expected body to include <form element');
+    }
+    if (!askBody.includes('maxlength="1000"')) {
+      throw new Error('Check failed for /ask: expected body to include maxlength="1000"');
+    }
+    if (!askBody.includes('AI assistant. The CV and case studies are the source of record.')) {
+      throw new Error(
+        'Check failed for /ask: expected body to include "AI assistant. The CV and case studies are the source of record."'
+      );
+    }
     routesPassed++;
 
     llmsStatus = await probe('/llms.txt', { expectedStatus: 200, expectedContentTypePrefix: 'text/plain' });
@@ -306,6 +349,85 @@ async function run() {
     routesPassed++;
 
     voicedashStatus = await probe('/case-studies/voicedash', { expectedStatus: 404 });
+    routesPassed++;
+
+    adminStatus = await probe('/admin', {
+      expectedStatus: 401,
+      expectedContentTypePrefix: 'text/html',
+      validateBody: (body) => {
+        if (!body.includes('noindex')) {
+          return 'expected body to contain noindex';
+        }
+        if (!body.includes('href="/admin/login"')) {
+          return 'expected body to contain href="/admin/login"';
+        }
+        if (body.includes('Admin settings')) {
+          return 'expected body NOT to contain "Admin settings"';
+        }
+        if (body.includes('••••')) {
+          return 'expected body NOT to contain "••••"';
+        }
+        return null;
+      },
+    });
+    routesPassed++;
+
+    adminLoginStatus = await probe('/admin/login', {
+      expectedStatus: 200,
+      expectedContentTypePrefix: 'text/html',
+      validateBody: (body) => {
+        if (!body.includes('noindex')) {
+          return 'expected body to contain noindex';
+        }
+        if (!body.includes('type="password"')) {
+          return 'expected body to contain type="password"';
+        }
+        return null;
+      },
+    });
+    routesPassed++;
+
+    askPostStatus = await probe('/api/ask', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ question: "What is Emad's availability?" }),
+      expectedStatus: 503,
+      expectedContentTypePrefix: 'application/json',
+      validateJson: (json) => {
+        if (json?.ok !== false) {
+          return `expected ok: false, observed ${JSON.stringify(json?.ok)}`;
+        }
+        if (json?.error !== 'unconfigured') {
+          return `expected error: 'unconfigured', observed ${JSON.stringify(json?.error)}`;
+        }
+        if (json?.message !== 'The assistant is unavailable right now') {
+          return `expected message: 'The assistant is unavailable right now', observed ${JSON.stringify(json?.message)}`;
+        }
+        return null;
+      },
+    });
+    routesPassed++;
+
+    adminLoginPostStatus = await probe('/api/admin/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+        'Origin': `http://127.0.0.1:${sitePort}`,
+        'Referer': `http://127.0.0.1:${sitePort}/admin/login`,
+      },
+      body: 'password=wrong',
+      expectedStatus: 401,
+      expectedContentTypePrefix: 'application/json',
+      validateJson: (json) => {
+        if (json?.ok !== false) {
+          return `expected ok: false, observed ${JSON.stringify(json?.ok)}`;
+        }
+        return null;
+      },
+    });
     routesPassed++;
 
     // 5. POST one valid message to /api/contact -> 200; db-count -> 1
@@ -474,17 +596,24 @@ async function run() {
     secretsNone &&
     aboutStatus === 200 &&
     caseStudiesStatus === 200 &&
+    askStatus === 200 &&
     llmsStatus === 200 &&
     resumeStatus === 200 &&
     apiProfileStatus === 200 &&
     voicedashStatus === 404 &&
-    routesPassed === 6
+    adminStatus === 401 &&
+    adminLoginStatus === 200 &&
+    askPostStatus === 503 &&
+    adminLoginPostStatus === 401 &&
+    routesPassed === 11
   ) {
     console.log(
       `healthz=${healthzStatus} rows_before=${rowsBefore} rows_after_rebuild=${rowsAfter} ` +
       `disabled=${disabledStatus} warning=present secrets=none ` +
-      `about=${aboutStatus} case_studies=${caseStudiesStatus} llms=${llmsStatus} ` +
-      `resume=${resumeStatus} api_profile=${apiProfileStatus} voicedash=${voicedashStatus} routes=${routesPassed}/6`
+      `about=${aboutStatus} case_studies=${caseStudiesStatus} ask=${askStatus} llms=${llmsStatus} ` +
+      `resume=${resumeStatus} api_profile=${apiProfileStatus} voicedash=${voicedashStatus} ` +
+      `admin=${adminStatus} admin_login=${adminLoginStatus} ask_post=${askPostStatus} admin_login_post=${adminLoginPostStatus} ` +
+      `routes=${routesPassed}/11`
     );
     process.exit(0);
   } else {

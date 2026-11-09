@@ -261,13 +261,14 @@ test('5. buildSitemap: sitemap.xml structure and URLs', () => {
   const xml = buildSitemap(caseStudies);
   const siteUrl = getSiteUrl();
 
-  // loc path list exactly ['/','/about','/case-studies','/contact','/case-studies/rousta-tv','/case-studies/namehamal']
+  // loc path list exactly ['/','/about','/case-studies','/ask','/contact','/case-studies/rousta-tv','/case-studies/namehamal']
   const locs = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map((m) => m[1]);
 
   const expectedPaths = [
     '/',
     '/about',
     '/case-studies',
+    '/ask',
     '/contact',
     '/case-studies/rousta-tv',
     '/case-studies/namehamal'

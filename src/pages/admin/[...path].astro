@@ -1,0 +1,38 @@
+---
+/**
+ * src/pages/admin/[...path].astro
+ *
+ * SSR catch-all for admin routes.
+ * Checks for an active admin session:
+ * - No session -> 401 HTML via render401()
+ * - Valid session -> 404 HTML via render404()
+ */
+
+import * as db from '../../lib/db.mjs';
+import { getSessionFromRequest } from '../../lib/admin-auth.mjs';
+import { render401, render404 } from '../../lib/admin-page.mjs';
+
+export const prerender = false;
+
+const session = getSessionFromRequest(Astro.request, db, { now: Date.now });
+
+if (!session) {
+  return new Response(render401(), {
+    status: 401,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    },
+  });
+}
+
+return new Response(render404(), {
+  status: 404,
+  headers: {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+  },
+});
+---

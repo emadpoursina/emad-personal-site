@@ -51,7 +51,7 @@
 - [ ] Changing the model or base URL in `/admin` takes effect on the next `/api/ask` request with no restart
 - [ ] Stored API keys are encrypted and shown masked
 **Out of scope:** The cover-letter generator and its rate limit (F10 for F9). Chat transcript review (F16, V1.1).
-**Spec:** none
+**Spec:** specs/003-ask-assistant-admin-settings
 
 ## Phase 4: General cover letter and generator path
 
