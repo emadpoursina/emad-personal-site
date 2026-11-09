@@ -2,20 +2,25 @@
 /**
  * scripts/check-agent-output.mjs
  *
- * Build-output proof for the agent-readable layer (F7, T022).
- * Runs after `npm run build` and checks the four machine surfaces:
+ * Build-output proof for the agent-readable layer (F7, T022, T036).
+ * Runs after `npm run build` and checks the machine surfaces:
  *
  *  1. dist/client/resume.json — validates against
  *     schemas/jsonresume-v1.0.0.json (ajv + ajv-draft-04) AND deep-equals
  *     buildResume(profile, studies).
  *  2. dist/client/llms.txt — deep-equals buildLlmsTxt(profile, studies).
- *  3. dist/client/sitemap.xml — deep-equals buildSitemap(studies).
+ *  3. dist/client/sitemap.xml — deep-equals buildSitemap(studies), contains
+ *     /ask exactly once, and contains no /admin path.
  *  4. Every *.html under dist/client — exactly one
  *     <script type="application/ld+json"> block, no other <script> element
- *     and no src, parsed object deep-equals buildPersonJsonLd(profile), and
- *     the object carries the approved Person fields.
+ *     (with the approved single module island allowance for /ask), and
+ *     parsed object deep-equals buildPersonJsonLd(profile).
+ *  5. buildProfileApi(profile, studies) — contains no /admin path or admin fact.
+ *  6. Builder isolation: buildResume, buildProfileApi, buildLlmsTxt, and
+ *     buildPersonJsonLd are invariant under assistantPolicy changes.
  *
- * Additionally asserts that no draft slug appears in any of the four outputs.
+ * Additionally asserts that no draft slug/URL and no admin fact
+ * (ADMIN_PASSWORD_HASH, ENCRYPTION_KEY, admin_session, /admin) appear in any surface.
  *
  * Exits 0 and prints "agent-output ok" on success.
  * Exits 1, naming the offending output for every failure.
@@ -28,6 +33,7 @@ import Ajv from 'ajv-draft-04';
 
 import {
   buildResume,
+  buildProfileApi,
   buildLlmsTxt,
   buildPersonJsonLd,
   buildSitemap,
@@ -40,6 +46,13 @@ const ROOT = join(__dirname, '..');
 const DIST = join(ROOT, 'dist', 'client');
 const SCHEMA_PATH = join(ROOT, 'schemas', 'jsonresume-v1.0.0.json');
 
+const FORBIDDEN_ADMIN_PATTERNS = [
+  '/admin',
+  'ADMIN_PASSWORD_HASH',
+  'ENCRYPTION_KEY',
+  'admin_session',
+];
+
 /** @type {string[]} */
 const failures = [];
 
@@ -50,6 +63,19 @@ const failures = [];
  */
 function fail(output, msg) {
   failures.push(`${output}: ${msg}`);
+}
+
+/**
+ * Asserts that a text does not contain any /admin path or admin fact.
+ * @param {string} output - surface name, e.g. "resume.json"
+ * @param {string} text
+ */
+function assertNoAdminFacts(output, text) {
+  for (const pattern of FORBIDDEN_ADMIN_PATTERNS) {
+    if (text.includes(pattern)) {
+      fail(output, `contains forbidden admin pattern "${pattern}"`);
+    }
+  }
 }
 
 /**
@@ -142,6 +168,8 @@ if (resumeText !== null) {
   if (new RegExp(DRAFT_URL, 'i').test(resumeText)) {
     fail('resume.json', `contains draft study URL "${DRAFT_URL}"`);
   }
+
+  assertNoAdminFacts('resume.json', resumeText);
 }
 
 // ---------------------------------------------------------------------------
@@ -159,6 +187,8 @@ if (llmsText !== null) {
   if (new RegExp(DRAFT_SLUG, 'i').test(llmsText)) {
     fail('llms.txt', `contains draft slug "${DRAFT_SLUG}"`);
   }
+
+  assertNoAdminFacts('llms.txt', llmsText);
 }
 
 // ---------------------------------------------------------------------------
@@ -176,6 +206,38 @@ if (sitemapText !== null) {
   if (new RegExp(DRAFT_SLUG, 'i').test(sitemapText)) {
     fail('sitemap.xml', `contains draft slug "${DRAFT_SLUG}"`);
   }
+
+  const askMatches = sitemapText.match(/\/ask(?=[/<"'\s]|$)/g) ?? [];
+  if (askMatches.length !== 1) {
+    fail('sitemap.xml', `expected "/ask" exactly once, found ${askMatches.length}`);
+  }
+
+  assertNoAdminFacts('sitemap.xml', sitemapText);
+
+  let askLocCount = 0;
+  const locRegex = /<loc>([\s\S]*?)<\/loc>/gi;
+  let locMatch;
+  while ((locMatch = locRegex.exec(sitemapText)) !== null) {
+    const loc = locMatch[1].trim();
+    let pathname = loc;
+    try {
+      const url = new URL(loc);
+      pathname = url.pathname;
+    } catch {
+      // fallback
+    }
+    if (pathname === '/ask' || pathname === '/ask/') {
+      askLocCount++;
+    }
+    if (pathname.startsWith('/admin')) {
+      fail('sitemap.xml', `loc pathname starts with "/admin": "${pathname}"`);
+    } else if (loc.startsWith('/admin')) {
+      fail('sitemap.xml', `loc pathname starts with "/admin": "${loc}"`);
+    }
+  }
+  if (askLocCount !== 1) {
+    fail('sitemap.xml', `expected exactly one /ask loc entry, found ${askLocCount}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -192,19 +254,63 @@ if (htmlFiles.length === 0) {
 
 for (const filePath of htmlFiles) {
   const pageName = relative(DIST, filePath);
+  const normalizedPageName = pageName.replace(/\\/g, '/');
+  const isAskPage = normalizedPageName === 'ask/index.html';
   const html = readFileSync(filePath, 'utf8');
 
-  const scriptTags = [...html.matchAll(/<script\b[^>]*>/gi)];
-  if (scriptTags.length !== 1) {
-    const kinds = scriptTags.map((m) => m[0]).join(', ');
-    fail('JSON-LD', `${pageName}: expected exactly one <script> element, found ${scriptTags.length} (${kinds || 'none'})`);
-  }
-  for (const tag of scriptTags) {
-    if (/\bsrc\s*=/i.test(tag[0])) {
-      fail('JSON-LD', `${pageName}: contains a <script src=…> element`);
+  const scriptTags = [...html.matchAll(/<script\b([^>]*)>/gi)];
+
+  if (isAskPage) {
+    let ldJsonCount = 0;
+    let moduleCount = 0;
+
+    for (const tag of scriptTags) {
+      const fullTag = tag[0];
+      const attrs = tag[1] ?? '';
+
+      if (/type\s*=\s*(['"])application\/ld\+json\1/i.test(attrs)) {
+        if (/\bsrc\s*=/i.test(attrs)) {
+          fail('JSON-LD', `${pageName}: JSON-LD contains a src attribute: ${fullTag}`);
+        }
+        ldJsonCount++;
+        if (ldJsonCount > 1) {
+          fail('JSON-LD', `${pageName}: contains extra JSON-LD script tag: ${fullTag}`);
+        }
+      } else if (/type\s*=\s*(['"])module\1/i.test(attrs)) {
+        const srcMatch = /\bsrc\s*=\s*(?:(['"])(.*?)\1|([^\s>]+))/i.exec(attrs);
+        if (srcMatch) {
+          const srcVal = srcMatch[2] ?? srcMatch[3];
+          if (!srcVal.startsWith('/_astro/')) {
+            fail('JSON-LD', `${pageName}: module script has src outside /_astro/: ${fullTag}`);
+          }
+        }
+        moduleCount++;
+        if (moduleCount > 1) {
+          fail('JSON-LD', `${pageName}: contains extra module script tag: ${fullTag}`);
+        }
+      } else {
+        fail('JSON-LD', `${pageName}: contains invalid script tag: ${fullTag}`);
+      }
     }
-    if (!/\btype\s*=\s*["']application\/ld\+json["']/i.test(tag[0])) {
-      fail('JSON-LD', `${pageName}: contains a non-JSON-LD <script> element: ${tag[0]}`);
+
+    if (ldJsonCount !== 1) {
+      fail('JSON-LD', `${pageName}: expected exactly one JSON-LD script, found ${ldJsonCount}`);
+    }
+    if (moduleCount > 1) {
+      fail('JSON-LD', `${pageName}: expected at most one module script, found ${moduleCount}`);
+    }
+  } else {
+    if (scriptTags.length !== 1) {
+      const kinds = scriptTags.map((m) => m[0]).join(', ');
+      fail('JSON-LD', `${pageName}: expected exactly one <script> element, found ${scriptTags.length} (${kinds || 'none'})`);
+    }
+    for (const tag of scriptTags) {
+      if (/\bsrc\s*=/i.test(tag[0])) {
+        fail('JSON-LD', `${pageName}: contains a <script src=…> element`);
+      }
+      if (!/\btype\s*=\s*["']application\/ld\+json["']/i.test(tag[0])) {
+        fail('JSON-LD', `${pageName}: contains a non-JSON-LD <script> element: ${tag[0]}`);
+      }
     }
   }
 
@@ -273,6 +379,68 @@ for (const filePath of htmlFiles) {
   if (new RegExp(DRAFT_URL, 'i').test(rawBlock)) {
     fail('JSON-LD', `${pageName}: JSON-LD block contains draft study URL "${DRAFT_URL}"`);
   }
+
+  for (const pattern of FORBIDDEN_ADMIN_PATTERNS) {
+    if (rawBlock.includes(pattern)) {
+      fail('JSON-LD', `${pageName}: JSON-LD block contains forbidden admin pattern "${pattern}"`);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 5. /api/profile builder — direct call & admin isolation
+// ---------------------------------------------------------------------------
+
+const profileApi = buildProfileApi(profile, studiesDoc);
+const profileApiText = JSON.stringify(profileApi);
+assertNoAdminFacts('/api/profile', profileApiText);
+if (new RegExp(DRAFT_URL, 'i').test(profileApiText)) {
+  fail('/api/profile', `contains draft study URL "${DRAFT_URL}"`);
+}
+
+// ---------------------------------------------------------------------------
+// 6. Builder isolation from assistantPolicy
+// ---------------------------------------------------------------------------
+
+const mutatedProfile = structuredClone(profile);
+mutatedProfile.assistantPolicy = {
+  disclaimer: 'CHANGED',
+  unavailable: 'CHANGED',
+  notAvailable: 'CHANGED',
+  salary: 'CHANGED',
+  privateCodebase: 'CHANGED',
+  visa: 'CHANGED',
+  ...(profile.assistantPolicy && typeof profile.assistantPolicy === 'object'
+    ? Object.fromEntries(Object.keys(profile.assistantPolicy).map((k) => [k, 'CHANGED']))
+    : {}),
+};
+
+const resumeOriginal = buildResume(profile, studiesDoc);
+const resumeMutated = buildResume(mutatedProfile, studiesDoc);
+const resumeDiff = firstDifference(resumeMutated, resumeOriginal);
+if (resumeDiff) {
+  fail('builder-isolation', `buildResume differs when assistantPolicy changes: ${resumeDiff}`);
+}
+
+const profileApiOriginal = buildProfileApi(profile, studiesDoc);
+const profileApiMutated = buildProfileApi(mutatedProfile, studiesDoc);
+const profileApiDiff = firstDifference(profileApiMutated, profileApiOriginal);
+if (profileApiDiff) {
+  fail('builder-isolation', `buildProfileApi differs when assistantPolicy changes: ${profileApiDiff}`);
+}
+
+const llmsOriginal = buildLlmsTxt(profile, studiesDoc);
+const llmsMutated = buildLlmsTxt(mutatedProfile, studiesDoc);
+if (llmsMutated !== llmsOriginal) {
+  const diff = firstDifference(llmsMutated.split('\n'), llmsOriginal.split('\n'));
+  fail('builder-isolation', `buildLlmsTxt differs when assistantPolicy changes: ${diff ?? 'text differs'}`);
+}
+
+const jsonLdOriginal = buildPersonJsonLd(profile);
+const jsonLdMutated = buildPersonJsonLd(mutatedProfile);
+const jsonLdDiff = firstDifference(jsonLdMutated, jsonLdOriginal);
+if (jsonLdDiff) {
+  fail('builder-isolation', `buildPersonJsonLd differs when assistantPolicy changes: ${jsonLdDiff}`);
 }
 
 // ---------------------------------------------------------------------------

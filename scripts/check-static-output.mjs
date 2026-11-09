@@ -112,10 +112,12 @@ if (!existsSync(contactPath)) {
 
 // ---------------------------------------------------------------------------
 // Invariant 2: Per-HTML-file script tag rules
-// - any <script ...> opening tag with a src attribute -> FAIL naming the file
-// - every <script ...> tag must have type="application/ld+json" exactly; any other script tag -> FAIL naming the file and the tag
-// - exactly one <script type="application/ld+json"> per HTML file: zero -> FAIL, more than one -> FAIL
+// - dist/client/ask/index.html only: allow exactly one ld+json block PLUS exactly
+//   one executable script (type="module", src="/_astro/..." or no src).
+// - every other HTML file: exactly one JSON-LD script, no src, no other script.
 // ---------------------------------------------------------------------------
+const askHtmlPath = join(DIST, 'ask', 'index.html');
+
 for (const filePath of allHtmlPaths) {
   const relPath = relative(ROOT, filePath);
   const html = readFileSync(filePath, 'utf8');
@@ -123,27 +125,74 @@ for (const filePath of allHtmlPaths) {
   // Match all <script ...> opening tags
   const scriptTagRegex = /<script\b([^>]*)>/gi;
   let match;
-  let ldJsonCount = 0;
 
-  while ((match = scriptTagRegex.exec(html)) !== null) {
-    const fullTag = match[0];
-    const attrs = match[1];
+  if (filePath === askHtmlPath) {
+    let ldJsonCount = 0;
+    let moduleCount = 0;
 
-    if (/\bsrc\s*=/i.test(attrs)) {
-      fail(`INV-2: ${relPath} contains script with src attribute: ${fullTag}`);
+    while ((match = scriptTagRegex.exec(html)) !== null) {
+      const fullTag = match[0];
+      const attrs = match[1];
+
+      if (/type\s*=\s*(['"])application\/ld\+json\1/i.test(attrs)) {
+        if (/\bsrc\s*=/i.test(attrs)) {
+          fail(`INV-2: ${relPath} contains script with src attribute: ${fullTag}`);
+        }
+        ldJsonCount++;
+        if (ldJsonCount > 1) {
+          fail(`INV-2: ${relPath} contains extra script: ${fullTag}`);
+        }
+      } else if (/type\s*=\s*(['"])module\1/i.test(attrs)) {
+        const srcMatch = /\bsrc\s*=\s*(?:(['"])(.*?)\1|([^\s>]+))/i.exec(attrs);
+        if (srcMatch) {
+          const srcVal = srcMatch[2] ?? srcMatch[3];
+          if (!srcVal.startsWith('/_astro/')) {
+            fail(`INV-2: ${relPath} contains module script with src outside /_astro/: ${fullTag}`);
+          }
+        }
+        moduleCount++;
+        if (moduleCount > 1) {
+          fail(`INV-2: ${relPath} contains extra script: ${fullTag}`);
+        }
+      } else {
+        fail(`INV-2: ${relPath} contains non-module script tag: ${fullTag}`);
+      }
     }
 
-    if (/type\s*=\s*(['"])application\/ld\+json\1/i.test(attrs)) {
-      ldJsonCount++;
-    } else {
-      fail(`INV-2: ${relPath} contains non-JSON-LD script tag: ${fullTag}`);
+    if (ldJsonCount === 0) {
+      fail(`INV-2: ${relPath} contains 0 <script type="application/ld+json"> tags (expected exactly 1)`);
+    } else if (ldJsonCount > 1) {
+      fail(`INV-2: ${relPath} contains ${ldJsonCount} <script type="application/ld+json"> tags (expected exactly 1)`);
     }
-  }
 
-  if (ldJsonCount === 0) {
-    fail(`INV-2: ${relPath} contains 0 <script type="application/ld+json"> tags (expected exactly 1)`);
-  } else if (ldJsonCount > 1) {
-    fail(`INV-2: ${relPath} contains ${ldJsonCount} <script type="application/ld+json"> tags (expected exactly 1)`);
+    if (moduleCount === 0) {
+      fail(`INV-2: ${relPath} contains 0 executable module script tags (expected exactly 1)`);
+    } else if (moduleCount > 1) {
+      fail(`INV-2: ${relPath} contains ${moduleCount} executable module script tags (expected exactly 1)`);
+    }
+  } else {
+    let ldJsonCount = 0;
+
+    while ((match = scriptTagRegex.exec(html)) !== null) {
+      const fullTag = match[0];
+      const attrs = match[1];
+
+      if (/\bsrc\s*=/i.test(attrs)) {
+        fail(`INV-2: ${relPath} contains script with src attribute: ${fullTag}`);
+      }
+
+      if (/type\s*=\s*(['"])application\/ld\+json\1/i.test(attrs)) {
+        ldJsonCount++;
+      } else {
+        fail(`INV-2: ${relPath} contains non-JSON-LD script tag: ${fullTag}`);
+      }
+    }
+
+    if (ldJsonCount === 0) {
+      fail(`INV-2: ${relPath} contains 0 <script type="application/ld+json"> tags (expected exactly 1)`);
+    } else if (ldJsonCount > 1) {
+      fail(`INV-2: ${relPath} contains ${ldJsonCount} <script type="application/ld+json"> tags (expected exactly 1)`);
+    }
   }
 }
 
@@ -439,6 +488,7 @@ if (!existsSync(sitemapPath)) {
     '/',
     '/about',
     '/case-studies',
+    '/ask',
     '/contact',
     '/case-studies/rousta-tv',
     '/case-studies/namehamal',
@@ -459,6 +509,12 @@ if (!existsSync(sitemapPath)) {
       actualPaths.push(url.pathname);
     } catch (err) {
       actualPaths.push(`[invalid-url: ${loc}]`);
+    }
+  }
+
+  for (const p of actualPaths) {
+    if (p.startsWith('/admin')) {
+      fail(`US1-6: sitemap.xml loc pathname starts with "/admin": "${p}"`);
     }
   }
 
@@ -673,6 +729,129 @@ if (aboutHtml !== '') {
       }
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// US3: Ask page
+// ---------------------------------------------------------------------------
+const askPath = join(DIST, 'ask', 'index.html');
+if (!existsSync(askPath)) {
+  fail('US3: dist/client/ask/index.html does not exist');
+} else {
+  const askHtml = readFileSync(askPath, 'utf8');
+
+  if (!askHtml.includes('<form')) {
+    fail('US3: dist/client/ask/index.html is missing <form element');
+  }
+
+  if (!askHtml.includes('maxlength="1000"')) {
+    fail('US3: dist/client/ask/index.html is missing maxlength="1000"');
+  }
+
+  // A status element carrying BOTH role="status" and aria-live="polite"
+  const tagRegex = /<([a-zA-Z0-9]+)\b([^>]*)>/g;
+  let statusTagMatch;
+  let hasValidStatusElement = false;
+  while ((statusTagMatch = tagRegex.exec(askHtml)) !== null) {
+    const attrs = statusTagMatch[2];
+    const hasRoleStatus = /\brole\s*=\s*(["'])status\1/i.test(attrs);
+    const hasAriaLive = /\baria-live\s*=\s*(["'])polite\1/i.test(attrs);
+    if (hasRoleStatus && hasAriaLive) {
+      hasValidStatusElement = true;
+      break;
+    }
+  }
+  if (!hasValidStatusElement) {
+    fail('US3: dist/client/ask/index.html is missing status element carrying both role="status" and aria-live="polite"');
+  }
+
+  // The exact text "AI assistant. The CV and case studies are the source of record." appearing exactly once
+  const exactDisclaimer = 'AI assistant. The CV and case studies are the source of record.';
+  const disclaimerOccurrences = askHtml.split(exactDisclaimer).length - 1;
+  if (disclaimerOccurrences !== 1) {
+    fail(`US3: dist/client/ask/index.html contains exact text "${exactDisclaimer}" ${disclaimerOccurrences} times (expected exactly 1)`);
+  }
+
+  // Assert exactly one module island as above
+  const scriptTagRegex = /<script\b([^>]*)>/gi;
+  let scriptMatch;
+  let askModuleCount = 0;
+  while ((scriptMatch = scriptTagRegex.exec(askHtml)) !== null) {
+    const fullTag = scriptMatch[0];
+    const attrs = scriptMatch[1];
+
+    if (/type\s*=\s*(['"])application\/ld\+json\1/i.test(attrs)) {
+      continue;
+    }
+
+    if (/type\s*=\s*(['"])module\1/i.test(attrs)) {
+      const srcMatch = /\bsrc\s*=\s*(?:(['"])(.*?)\1|([^\s>]+))/i.exec(attrs);
+      if (srcMatch) {
+        const srcVal = srcMatch[2] ?? srcMatch[3];
+        if (!srcVal.startsWith('/_astro/')) {
+          fail(`US3: dist/client/ask/index.html contains module script with src outside /_astro/: ${fullTag}`);
+        }
+      }
+      askModuleCount++;
+      if (askModuleCount > 1) {
+        fail(`US3: dist/client/ask/index.html contains extra executable script tag: ${fullTag}`);
+      }
+    } else {
+      fail(`US3: dist/client/ask/index.html contains non-module script tag: ${fullTag}`);
+    }
+  }
+
+  if (askModuleCount !== 1) {
+    fail(`US3: dist/client/ask/index.html contains ${askModuleCount} executable module script tags (expected exactly 1)`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// US3: Admin pages and on-demand assertions
+// ---------------------------------------------------------------------------
+const adminLoginPath = join(DIST, 'admin', 'login', 'index.html');
+if (!existsSync(adminLoginPath)) {
+  fail('US3: dist/client/admin/login/index.html does not exist');
+} else {
+  const adminLoginHtml = readFileSync(adminLoginPath, 'utf8');
+
+  if (!adminLoginHtml.includes('noindex')) {
+    fail('US3: dist/client/admin/login/index.html is missing "noindex"');
+  }
+
+  if (!/type\s*=\s*(["'])password\1/i.test(adminLoginHtml)) {
+    fail('US3: dist/client/admin/login/index.html is missing type="password" input');
+  }
+
+  const forbiddenTokens = ['AI_API_KEY', 'SMTP_HOST', 'v1:', 'ADMIN_PASSWORD_HASH'];
+  for (const token of forbiddenTokens) {
+    if (adminLoginHtml.includes(token)) {
+      fail(`US3: dist/client/admin/login/index.html contains forbidden settings token "${token}"`);
+    }
+  }
+
+  const envTokens = [
+    process.env.AI_API_KEY,
+    process.env.SMTP_HOST,
+    process.env.ADMIN_PASSWORD_HASH,
+    process.env.ENCRYPTION_KEY,
+  ].filter((v) => typeof v === 'string' && v.trim().length > 0);
+
+  for (const envVal of envTokens) {
+    if (adminLoginHtml.includes(envVal)) {
+      fail('US3: dist/client/admin/login/index.html contains active environment secret');
+    }
+  }
+}
+
+const adminIndexPath = join(DIST, 'admin', 'index.html');
+if (existsSync(adminIndexPath)) {
+  fail('US3: dist/client/admin/index.html exists but must remain on-demand (not prerendered)');
+}
+
+const apiAdminLoginPath = join(DIST, 'api', 'admin', 'login');
+if (existsSync(apiAdminLoginPath)) {
+  fail('US3: dist/client/api/admin/login exists but must remain on-demand (not prerendered)');
 }
 
 // ---------------------------------------------------------------------------

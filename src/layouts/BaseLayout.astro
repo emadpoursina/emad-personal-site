@@ -20,9 +20,10 @@ import { buildPersonJsonLd } from '../lib/agent-output.mjs';
 interface Props {
   title: string;
   description: string;
+  noindex?: boolean;
 }
 
-const { title, description } = Astro.props;
+const { title, description, noindex = false } = Astro.props;
 const personJsonLd = JSON.stringify(buildPersonJsonLd(loadProfile())).replace(/</g, '\\u003c');
 ---
 
@@ -31,6 +32,7 @@ const personJsonLd = JSON.stringify(buildPersonJsonLd(loadProfile())).replace(/<
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
     <meta name="description" content={description} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" sizes="any" />

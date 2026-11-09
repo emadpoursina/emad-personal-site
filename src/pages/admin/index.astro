@@ -1,0 +1,75 @@
+---
+/**
+ * src/pages/admin/index.astro
+ *
+ * GET /admin — On-demand admin settings page.
+ * Requires an active admin session.
+ * Displays masked settings and configuration overrides.
+ */
+
+import * as db from '../../lib/db.mjs';
+import { getSessionFromRequest } from '../../lib/admin-auth.mjs';
+import { render401, renderSettings } from '../../lib/admin-page.mjs';
+import { getMaskedSettings, SETTINGS_FIELDS } from '../../lib/settings.mjs';
+
+export const prerender = false;
+
+const HEADERS = {
+  'Content-Type': 'text/html; charset=utf-8',
+  'Cache-Control': 'no-store',
+  'X-Content-Type-Options': 'nosniff',
+  'Content-Language': 'en',
+};
+
+const ERROR_500_HTML = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Server error — Emad Poursina</title>
+</head>
+<body>
+  <main id="main">
+    <h1>Server error</h1>
+    <p>An internal server error occurred.</p>
+  </main>
+</body>
+</html>`;
+
+try {
+  const session = getSessionFromRequest(Astro.request, db, { now: Date.now });
+
+  if (!session) {
+    return new Response(render401(), {
+      status: 401,
+      headers: HEADERS,
+    });
+  }
+
+  const rawSettings = db.getAllSettings();
+  const overrides = {};
+  for (const [fieldName, meta] of Object.entries(SETTINGS_FIELDS)) {
+    if (
+      meta.type === 'non-secret' &&
+      Object.prototype.hasOwnProperty.call(rawSettings, meta.key) &&
+      rawSettings[meta.key] !== undefined
+    ) {
+      overrides[fieldName] = String(rawSettings[meta.key]);
+    }
+  }
+
+  const settings = getMaskedSettings();
+  const saved = new URL(Astro.request.url).searchParams.get('saved') === '1';
+
+  return new Response(renderSettings({ settings, overrides, saved }), {
+    status: 200,
+    headers: HEADERS,
+  });
+} catch {
+  return new Response(ERROR_500_HTML, {
+    status: 500,
+    headers: HEADERS,
+  });
+}
+---

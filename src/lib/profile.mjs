@@ -49,6 +49,12 @@ export const SKILL_CATEGORIES = [
   'Agentic Coding & AI Tooling',
 ];
 
+export const APPROVED_ASSISTANT_DISCLAIMER =
+  'AI assistant. The CV and case studies are the source of record.';
+
+export const APPROVED_ASSISTANT_UNAVAILABLE =
+  'The assistant is unavailable right now';
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -224,6 +230,47 @@ export function validateProfile(profile, filePath = 'content/profile.json') {
   // --- languages: non-empty array ---
   if (!isNonEmptyArray(p['languages'])) {
     throw new Error(`profile field missing or empty: languages`);
+  }
+
+  // --- assistantPolicy: required object with six string fields ---
+  if (!isNonEmptyObject(p['assistantPolicy'])) {
+    throw new Error(`profile field missing or empty: assistantPolicy`);
+  }
+
+  const ap = /** @type {Record<string, unknown>} */ (p['assistantPolicy']);
+  const policyFields = [
+    'disclaimer',
+    'unavailable',
+    'notAvailable',
+    'salary',
+    'privateCodebase',
+    'visa',
+  ];
+
+  for (const field of policyFields) {
+    if (typeof ap[field] !== 'string' || ap[field].trim() === '') {
+      throw new Error(`profile field missing or empty: assistantPolicy.${field}`);
+    }
+  }
+
+  if (ap['disclaimer'] !== APPROVED_ASSISTANT_DISCLAIMER) {
+    throw new Error(`profile field has wrong value: assistantPolicy.disclaimer`);
+  }
+
+  if (ap['unavailable'] !== APPROVED_ASSISTANT_UNAVAILABLE) {
+    throw new Error(`profile field has wrong value: assistantPolicy.unavailable`);
+  }
+
+  if (!/** @type {string} */ (ap['privateCodebase']).includes('{caseStudiesPath}')) {
+    throw new Error(
+      `profile field invalid: assistantPolicy.privateCodebase must contain "{caseStudiesPath}"`
+    );
+  }
+
+  if (!/** @type {string} */ (ap['visa']).includes(APPROVED_WORK_AUTHORIZATION)) {
+    throw new Error(
+      `profile field invalid: assistantPolicy.visa must contain "${APPROVED_WORK_AUTHORIZATION}"`
+    );
   }
 }
 

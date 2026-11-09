@@ -27,6 +27,7 @@ const EVIDENCE_DIR = path.join(ROOT, '.evidence');
 export const PAGES = [
   { name: 'home', path: '/' },
   { name: 'about', path: '/about' },
+  { name: 'ask', path: '/ask' },
   { name: 'rousta-tv', path: '/case-studies/rousta-tv' },
 ];
 
@@ -502,7 +503,7 @@ async function main() {
       return;
     }
 
-    console.log('lighthouse gate ok (3 pages)');
+    console.log(`lighthouse gate ok (${PAGES.length} pages)`);
     process.exitCode = 0;
   } finally {
     cleanup();

@@ -1,0 +1,61 @@
+---
+/**
+ * src/pages/admin/login.astro
+ *
+ * Prerendered admin login page.
+ * Uses BaseLayout with noindex, native no-JS form, and no settings values.
+ */
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export const prerender = true;
+---
+
+<BaseLayout
+  title="Admin login — Emad Poursina"
+  description="Admin login for Emad Poursina's personal site."
+  noindex={true}
+>
+  <div class="login-container">
+    <h1>Admin login</h1>
+    <form method="post" action="/api/admin/login" enctype="application/x-www-form-urlencoded">
+      <div class="form-field">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          required
+          autocomplete="current-password"
+        />
+      </div>
+      <button type="submit">Log in</button>
+    </form>
+    <p><a href="/">Back to home</a></p>
+  </div>
+</BaseLayout>
+
+<style>
+  .login-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--fg-heading);
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+  }
+
+  .form-field {
+    margin-bottom: 1.25rem;
+  }
+
+  p {
+    margin-top: 1.5rem;
+  }
+</style>

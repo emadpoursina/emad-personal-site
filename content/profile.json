@@ -448,5 +448,13 @@
       "name": "German",
       "level": "A1 — currently learning"
     }
-  ]
+  ],
+  "assistantPolicy": {
+    "disclaimer": "AI assistant. The CV and case studies are the source of record.",
+    "unavailable": "The assistant is unavailable right now",
+    "notAvailable": "I do not have that information in the approved profile. Please use the contact form to ask Emad directly.",
+    "salary": "I cannot discuss salary expectations. Please use the contact form to ask Emad directly.",
+    "privateCodebase": "That codebase is private. You can read the published case studies at {caseStudiesPath}, and use the contact form for anything else.",
+    "visa": "I cannot discuss named visa programs. Requires employer-sponsored work authorization. Please use the contact form for details."
+  }
 }
