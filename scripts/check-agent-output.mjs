@@ -238,6 +238,25 @@ if (sitemapText !== null) {
   if (askLocCount !== 1) {
     fail('sitemap.xml', `expected exactly one /ask loc entry, found ${askLocCount}`);
   }
+
+  const coverLetterLocs = [];
+  const allLocRegex = /<loc>([\s\S]*?)<\/loc>/gi;
+  let coverMatch;
+  while ((coverMatch = allLocRegex.exec(sitemapText)) !== null) {
+    const loc = coverMatch[1].trim();
+    let pathname = loc;
+    try { pathname = new URL(loc).pathname; } catch { /* keep raw */ }
+    coverLetterLocs.push(pathname);
+  }
+  const coverLetterCount = coverLetterLocs.filter((p) => p === '/cover-letter').length;
+  if (coverLetterCount !== 1) fail('sitemap.xml', `expected "/cover-letter" exactly once, found ${coverLetterCount}`);
+  const contactIndex = coverLetterLocs.indexOf('/contact');
+  const coverLetterIndex = coverLetterLocs.indexOf('/cover-letter');
+  if (contactIndex === -1 || coverLetterIndex === -1 || coverLetterIndex !== contactIndex + 1) {
+    fail('sitemap.xml', `expected "/cover-letter" immediately after "/contact" (contact index ${contactIndex}, cover-letter index ${coverLetterIndex})`);
+  }
+  const coverLetterMentions = sitemapText.match(/\/cover-letter(?=[/<"'\s]|$)/g) ?? [];
+  if (coverLetterMentions.length !== 1) fail('sitemap.xml', `expected the text "/cover-letter" exactly once, found ${coverLetterMentions.length}`);
 }
 
 // ---------------------------------------------------------------------------

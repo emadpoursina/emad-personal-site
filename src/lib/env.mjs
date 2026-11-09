@@ -58,23 +58,32 @@ function parseBoundedInteger(raw, key, min, max, defaultValue) {
  * Absent/empty string values return defaultValue without a warning.
  *
  * @param {unknown} raw
- * @param {number} defaultValue
- * @param {number} maxVal
+ * @param {string} [key]
+ * @param {number} [defaultValue]
+ * @param {number} [maxVal]
  * @returns {number}
  */
-function parseTimeoutMs(raw, defaultValue, maxVal) {
+function parseTimeoutMs(raw, key = 'AI_TIMEOUT_MS', defaultValue = 30000, maxVal = 30000) {
+  let envKey = key;
+  let defVal = defaultValue;
+  let max = maxVal;
+  if (typeof key === 'number') {
+    envKey = 'AI_TIMEOUT_MS';
+    defVal = key;
+    max = defaultValue;
+  }
   if (raw === undefined || raw === '') {
-    return defaultValue;
+    return defVal;
   }
   const trimmed = typeof raw === 'string' ? raw.trim() : String(raw).trim();
   if (/^-?\d+$/.test(trimmed)) {
     const n = Number(trimmed);
     if (Number.isSafeInteger(n) && n > 0) {
-      return Math.min(n, maxVal);
+      return Math.min(n, max);
     }
   }
-  warnOnce('AI_TIMEOUT_MS', `AI_TIMEOUT_MS is invalid; falling back to ${defaultValue}.`);
-  return defaultValue;
+  warnOnce(envKey, `${envKey} is invalid; falling back to ${defVal}.`);
+  return defVal;
 }
 
 /**
@@ -112,6 +121,16 @@ export function config() {
 
   const aiTimeoutMs = parseTimeoutMs(
     process.env.AI_TIMEOUT_MS,
+    'AI_TIMEOUT_MS',
+    30000,
+    30000
+  );
+
+  const generatorEndpoint = process.env.GENERATOR_ENDPOINT ?? '';
+  const generatorApiKey = process.env.GENERATOR_API_KEY ?? '';
+  const generatorTimeoutMs = parseTimeoutMs(
+    process.env.GENERATOR_TIMEOUT_MS,
+    'GENERATOR_TIMEOUT_MS',
     30000,
     30000
   );
@@ -137,6 +156,9 @@ export function config() {
     ASK_DAILY_CAP:               askDailyCap,
     ASK_RATE_LIMIT_PER_HOUR:     askRateLimitPerHour,
     AI_TIMEOUT_MS:               aiTimeoutMs,
+    GENERATOR_ENDPOINT:          generatorEndpoint,
+    GENERATOR_API_KEY:           generatorApiKey,
+    GENERATOR_TIMEOUT_MS:        generatorTimeoutMs,
   };
 
   // Warn once when SMTP is not fully configured
@@ -152,6 +174,11 @@ export function config() {
   // Warn once when admin settings are unconfigured
   if (!adminPasswordHash || !encryptionKey) {
     warnOnce('admin', 'Admin settings are unconfigured (ADMIN_PASSWORD_HASH, ENCRYPTION_KEY required).');
+  }
+
+  // Warn once when the generator is partially configured
+  if (Boolean(generatorEndpoint) !== Boolean(generatorApiKey)) {
+    warnOnce('generator', 'Generator is unconfigured (GENERATOR_ENDPOINT, GENERATOR_API_KEY required).');
   }
 
   return _config;

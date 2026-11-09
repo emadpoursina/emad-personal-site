@@ -19,7 +19,7 @@ export function getSiteUrl() {
   return base.replace(/\/+$/, '');
 }
 
-export const PUBLIC_PAGE_PATHS = ['/', '/about', '/case-studies', '/ask', '/contact'];
+export const PUBLIC_PAGE_PATHS = ['/', '/about', '/case-studies', '/ask', '/contact', '/cover-letter'];
 
 /**
  * Returns an absolute URL for the given root-relative path.

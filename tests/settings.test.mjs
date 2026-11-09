@@ -30,6 +30,7 @@ import {
   SETTINGS_FIELDS,
   getEffectiveSettings,
   getEffectiveSmtp,
+  getEffectiveGenerator,
   getMaskedSettings,
   saveSettings,
   resetSettingsWarnings,
@@ -568,5 +569,181 @@ describe('src/lib/settings.mjs', () => {
     saveSettings({ smtpHost: 'smtp.test.com' });
     assert.equal(db.getSetting('smtp.secure'), 'false');
     assert.equal(getEffectiveSettings().smtpSecure, false);
+  });
+
+  describe('getEffectiveGenerator()', () => {
+    test('(a) admin-over-env: admin generator.endpoint row wins over valid GENERATOR_ENDPOINT env value and trims trailing slashes', () => {
+      process.env.GENERATOR_ENDPOINT = 'https://env-endpoint.example.com/api/';
+      process.env.GENERATOR_API_KEY = 'secret-test-key';
+
+      // Before admin row: env is used, trailing slash stripped
+      let gen = getEffectiveGenerator();
+      assert.equal(gen.endpoint, 'https://env-endpoint.example.com/api');
+      assert.equal(gen.apiKey, 'secret-test-key');
+      assert.equal(gen.configured, true);
+
+      // Save admin row with multiple trailing slashes
+      const res = saveSettings({ generatorEndpoint: 'https://admin-endpoint.example.com/v1///' });
+      assert.ok(res.ok);
+
+      gen = getEffectiveGenerator();
+      assert.equal(gen.endpoint, 'https://admin-endpoint.example.com/v1');
+      assert.equal(gen.configured, true);
+    });
+
+    test('(b) env-only key: GENERATOR_API_KEY is trimmed, never in DB, getMaskedSettings(), or SETTINGS_FIELDS', () => {
+      const testSecretKey = 'super-secret-generator-key-12345';
+      process.env.GENERATOR_API_KEY = `  ${testSecretKey}  `;
+
+      const gen = getEffectiveGenerator();
+      assert.equal(gen.apiKey, testSecretKey);
+
+      assert.equal('generatorApiKey' in SETTINGS_FIELDS, false);
+      assert.equal('apiKey' in SETTINGS_FIELDS, false);
+      assert.equal(Object.values(SETTINGS_FIELDS).some((f) => f.key.includes('generator') && f.type === 'secret'), false);
+
+      const eff = getEffectiveSettings();
+      assert.equal('generatorApiKey' in eff, false);
+      assert.equal(JSON.stringify(eff).includes(testSecretKey), false);
+
+      const masked = getMaskedSettings();
+      assert.equal('generatorApiKey' in masked, false);
+      assert.equal(JSON.stringify(masked).includes(testSecretKey), false);
+
+      // Verify DB settings table doesn't have it either
+      const allRows = db.getAllSettings();
+      assert.equal(JSON.stringify(allRows).includes(testSecretKey), false);
+    });
+
+    test('(c) configured matrix: endpoint only -> false; key only -> false; both -> true; neither -> false', () => {
+      // neither
+      delete process.env.GENERATOR_ENDPOINT;
+      delete process.env.GENERATOR_API_KEY;
+      let gen = getEffectiveGenerator();
+      assert.equal(gen.endpoint, '');
+      assert.equal(gen.apiKey, '');
+      assert.equal(gen.configured, false);
+
+      // endpoint only
+      process.env.GENERATOR_ENDPOINT = 'https://endpoint.example.com';
+      delete process.env.GENERATOR_API_KEY;
+      gen = getEffectiveGenerator();
+      assert.equal(gen.endpoint, 'https://endpoint.example.com');
+      assert.equal(gen.apiKey, '');
+      assert.equal(gen.configured, false);
+
+      // key only
+      delete process.env.GENERATOR_ENDPOINT;
+      process.env.GENERATOR_API_KEY = 'valid-key';
+      gen = getEffectiveGenerator();
+      assert.equal(gen.endpoint, '');
+      assert.equal(gen.apiKey, 'valid-key');
+      assert.equal(gen.configured, false);
+
+      // whitespace-only values should also count as unconfigured
+      process.env.GENERATOR_ENDPOINT = '   ';
+      process.env.GENERATOR_API_KEY = '   ';
+      gen = getEffectiveGenerator();
+      assert.equal(gen.endpoint, '');
+      assert.equal(gen.apiKey, '');
+      assert.equal(gen.configured, false);
+
+      // both
+      process.env.GENERATOR_ENDPOINT = 'https://endpoint.example.com';
+      process.env.GENERATOR_API_KEY = 'valid-key';
+      gen = getEffectiveGenerator();
+      assert.equal(gen.endpoint, 'https://endpoint.example.com');
+      assert.equal(gen.apiKey, 'valid-key');
+      assert.equal(gen.configured, true);
+    });
+
+    test('(d) timeout: unset -> 30000; 15000 -> 15000; 60000 -> 30000; 999999 -> 30000; invalid (\'abc\', \'0\') -> 30000', () => {
+      // unset
+      delete process.env.GENERATOR_TIMEOUT_MS;
+      assert.equal(getEffectiveGenerator().timeoutMs, 30000);
+
+      // 15000
+      process.env.GENERATOR_TIMEOUT_MS = '15000';
+      assert.equal(getEffectiveGenerator().timeoutMs, 15000);
+
+      // 60000 capped at 30000
+      process.env.GENERATOR_TIMEOUT_MS = '60000';
+      assert.equal(getEffectiveGenerator().timeoutMs, 30000);
+
+      // 999999 capped at 30000
+      process.env.GENERATOR_TIMEOUT_MS = '999999';
+      assert.equal(getEffectiveGenerator().timeoutMs, 30000);
+
+      // invalid strings
+      process.env.GENERATOR_TIMEOUT_MS = 'abc';
+      assert.equal(getEffectiveGenerator().timeoutMs, 30000);
+
+      process.env.GENERATOR_TIMEOUT_MS = '0';
+      assert.equal(getEffectiveGenerator().timeoutMs, 30000);
+
+      process.env.GENERATOR_TIMEOUT_MS = '-100';
+      assert.equal(getEffectiveGenerator().timeoutMs, 30000);
+
+      process.env.GENERATOR_TIMEOUT_MS = '15000.5';
+      assert.equal(getEffectiveGenerator().timeoutMs, 30000);
+    });
+
+    test('(e) per-call resolution: save generatorEndpoint to URL B, next call returns B with no restart; change again and assert', () => {
+      process.env.GENERATOR_API_KEY = 'test-key';
+
+      // Initially no endpoint
+      assert.equal(getEffectiveGenerator().endpoint, '');
+
+      // Set to URL B
+      const urlB = 'https://b.example.com/gen';
+      saveSettings({ generatorEndpoint: urlB });
+      assert.equal(getEffectiveGenerator().endpoint, urlB);
+
+      // Change to URL C directly via db or saveSettings
+      const urlC = 'https://c.example.com/gen';
+      saveSettings({ generatorEndpoint: urlC });
+      assert.equal(getEffectiveGenerator().endpoint, urlC);
+
+      // Clear via blank generatorEndpoint
+      saveSettings({ generatorEndpoint: '' });
+      assert.equal(getEffectiveGenerator().endpoint, '');
+    });
+
+    test('(f) fail-closed: DATA_DIR broken causes getEffectiveGenerator() to fail closed without throwing, logging exactly one warning', () => {
+      process.env.GENERATOR_API_KEY = 'my-env-api-key';
+      process.env.GENERATOR_ENDPOINT = 'https://fallback.example.com';
+      resetSettingsWarnings();
+
+      // Ensure db connection is closed so next call tries to initialize in bad DATA_DIR
+      db.close();
+
+      const originalDataDir = process.env.DATA_DIR;
+      process.env.DATA_DIR = '/dev/null/not-a-dir';
+
+      const warnings = [];
+      const origWarn = console.warn;
+      console.warn = (...args) => warnings.push(args.join(' '));
+
+      try {
+        const gen1 = getEffectiveGenerator();
+        assert.equal(gen1.endpoint, '');
+        assert.equal(gen1.apiKey, 'my-env-api-key');
+        assert.equal(gen1.timeoutMs, 30000);
+        assert.equal(gen1.configured, false);
+
+        // Second call should not emit duplicate warning
+        const gen2 = getEffectiveGenerator();
+        assert.equal(gen2.endpoint, '');
+        assert.equal(gen2.configured, false);
+
+        const genWarnings = warnings.filter((w) => w.includes('[settings]') && w.includes('Failed to read settings for the generator'));
+        assert.equal(genWarnings.length, 1, 'Must emit exactly one warning on settings store failure');
+        assert.equal(genWarnings[0].includes('my-env-api-key'), false, 'Warning must not contain secret or input values');
+      } finally {
+        console.warn = origWarn;
+        process.env.DATA_DIR = originalDataDir;
+        db.close();
+      }
+    });
   });
 });

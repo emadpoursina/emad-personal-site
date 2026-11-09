@@ -16,6 +16,12 @@
  * - .env.example documentation is complete and empty-valued:
  *   - every process.env variable read by src/lib/env.mjs appears exactly once with an empty value
  *   - all eight Phase 3 variables appear with empty values
+ *   - all three Phase 4 generator variables appear with empty values
+ * - Phase 4 fixture material never leaks into src/, scripts/, or content/:
+ *   - zero generator-key fixture matches
+ *   - zero job-description marker matches
+ *   - zero real AES secret envelopes (v1:...)
+ * - The suite itself creates no .env file at the repository root or under src/, scripts/, content/, tests/.
  * - The test file passes its own rules when scanned.
  *
  * Run with: node --experimental-sqlite --test tests/secret-scan.test.mjs
@@ -50,6 +56,20 @@ const PHASE_3_ENV_NAMES = [
   'ASK_RATE_LIMIT_PER_HOUR',
   'AI_TIMEOUT_MS',
 ];
+
+const PHASE_4_ENV_NAMES = [
+  'GENERATOR_ENDPOINT',
+  'GENERATOR_API_KEY',
+  'GENERATOR_TIMEOUT_MS',
+];
+
+// Needles built from concatenated fragments so the test file itself passes when scanned.
+// The generator-key fixture shape is the integration suite's test key: 8 lowercase hex digits.
+// The stub scripts use clearly labelled self-test tokens (-1234, -public-routes), not this shape.
+const GENERATOR_KEY_PATTERN = new RegExp('test' + '-generator' + '-key' + '-[0-9a-f]{8}');
+const JOB_DESCRIPTION_MARKER_PATTERN = new RegExp(
+  'UNIQUE' + '-JOB' + '-DESCRIPTION' + '-MARKER' + '-[A-Za-z0-9]+'
+);
 
 /**
  * Recursively collects all regular file paths in a directory.
@@ -230,6 +250,64 @@ describe('secret-hygiene test suite (T038)', () => {
       );
     });
 
+    test('zero matches for the generator-key fixture pattern across all scanned files', () => {
+      const files = getScannedFiles(ROOT_DIR);
+      for (const file of files) {
+        const content = readUtf8TextFile(file);
+        if (content === null) continue;
+
+        const match = content.match(GENERATOR_KEY_PATTERN);
+        const relPath = path.relative(ROOT_DIR, file);
+        assert.ok(
+          !match,
+          `Found generator-key fixture in ${relPath}: ${match ? redactToken(match[0]) : ''}`
+        );
+      }
+
+      const sample = 'test' + '-generator' + '-key' + '-9f3c2a7d';
+      assert.ok(GENERATOR_KEY_PATTERN.test(sample), 'generator-key pattern must detect the fixture');
+    });
+
+    test('zero matches for the job-description fixture marker across all scanned files', () => {
+      const files = getScannedFiles(ROOT_DIR);
+      for (const file of files) {
+        const content = readUtf8TextFile(file);
+        if (content === null) continue;
+
+        const match = content.match(JOB_DESCRIPTION_MARKER_PATTERN);
+        const relPath = path.relative(ROOT_DIR, file);
+        assert.ok(
+          !match,
+          `Found job-description fixture in ${relPath}: ${match ? redactToken(match[0]) : ''}`
+        );
+      }
+
+      const sample = 'UNIQUE' + '-JOB' + '-DESCRIPTION' + '-MARKER' + '-6d1f';
+      assert.ok(
+        JOB_DESCRIPTION_MARKER_PATTERN.test(sample),
+        'job-description pattern must detect the fixture'
+      );
+    });
+
+    test('zero real v1: secret envelopes in src/, scripts/, or content/', () => {
+      const files = ['src', 'scripts', 'content'].flatMap((dir) =>
+        collectRegularFiles(path.join(ROOT_DIR, dir))
+      );
+      assert.ok(files.length > 0, 'Phase 4 trees must contain files to scan');
+
+      for (const file of files) {
+        const content = readUtf8TextFile(file);
+        if (content === null) continue;
+
+        const match = content.match(AES_ENVELOPE_PATTERN);
+        const relPath = path.relative(ROOT_DIR, file);
+        assert.ok(
+          !match,
+          `Found real AES envelope in ${relPath}: ${match ? redactToken(match[0]) : ''}`
+        );
+      }
+    });
+
     test('redactToken helper produces exactly first 8 characters plus ellipsis and never full token', () => {
       const sample = 'secret-key-sample-material-here-1234567890';
       const redacted = redactToken(sample);
@@ -281,6 +359,26 @@ describe('secret-hygiene test suite (T038)', () => {
         `No file named .env may exist under src/, scripts/, content/; found: ${dotEnvPaths.join(', ')}`
       );
     });
+
+    test('the secret-scan suite creates no .env file', () => {
+      const rootDotEnv = path.join(ROOT_DIR, '.env');
+      assert.equal(
+        fs.existsSync(rootDotEnv),
+        false,
+        `.env must not be created at repository root: ${rootDotEnv}`
+      );
+
+      const scanDirs = ['src', 'scripts', 'content', 'tests'];
+      const dotEnvPaths = scanDirs
+        .flatMap((dir) => findFilesByName(path.join(ROOT_DIR, dir), '.env'))
+        .map((p) => path.relative(ROOT_DIR, p));
+
+      assert.deepEqual(
+        dotEnvPaths,
+        [],
+        `The suite must create no .env under src/, scripts/, content/, tests/; found: ${dotEnvPaths.join(', ')}`
+      );
+    });
   });
 
   describe('.env.example documentation assertions', () => {
@@ -325,6 +423,24 @@ describe('secret-hygiene test suite (T038)', () => {
           matchingLines.length,
           1,
           `Phase 3 variable ${name} must appear in .env.example exactly once with an empty value (found ${matchingLines.length})`
+        );
+      }
+    });
+
+    test('all three Phase 4 generator variables are documented in .env.example with empty values', () => {
+      const envExamplePath = path.join(ROOT_DIR, '.env.example');
+      const envExampleLines = fs
+        .readFileSync(envExamplePath, 'utf8')
+        .split('\n')
+        .map((line) => line.trim());
+
+      for (const name of PHASE_4_ENV_NAMES) {
+        const pattern = new RegExp(`^${name}=$`);
+        const matchingLines = envExampleLines.filter((line) => pattern.test(line));
+        assert.equal(
+          matchingLines.length,
+          1,
+          `Phase 4 variable ${name} must appear in .env.example exactly once with an empty value (found ${matchingLines.length})`
         );
       }
     });

@@ -1,0 +1,320 @@
+---
+/**
+ * src/components/CoverLetterForm.astro
+ *
+ * Cover-letter generator form component.
+ * Allows visitors to input a job description and receive a tailored cover letter.
+ */
+---
+
+<section class="cover-letter-generator">
+  <h2>Tailor a cover letter</h2>
+
+  <noscript>
+    <p>JavaScript is required to generate a tailored letter. Please use the <a href="/contact">contact form</a> instead.</p>
+  </noscript>
+
+  <form id="cover-letter-form" class="cover-letter-form">
+    <div class="form-group">
+      <label for="jobDescription">Job description</label>
+      <textarea
+        id="jobDescription"
+        name="jobDescription"
+        rows="8"
+        maxlength="8000"
+        required
+        aria-describedby="jobDescription-hint"
+      ></textarea>
+      <p id="jobDescription-hint" class="cover-letter-hint">Paste the job description (up to 8,000 characters).</p>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" id="cover-letter-submit">Write my cover letter</button>
+    </div>
+  </form>
+
+  <p id="cover-letter-status" role="status" aria-live="polite"></p>
+  <p id="cover-letter-error" role="alert"></p>
+  <div id="cover-letter-result" class="cover-letter-result" hidden></div>
+  <p id="cover-letter-fallback" hidden>You can also use the <a href="#general-letter">general cover letter</a>.</p>
+</section>
+
+<script>
+  const form = document.getElementById('cover-letter-form');
+  const textarea = document.getElementById('jobDescription');
+  const button = document.getElementById('cover-letter-submit');
+  const status = document.getElementById('cover-letter-status');
+  const error = document.getElementById('cover-letter-error');
+  const result = document.getElementById('cover-letter-result');
+  const fallback = document.getElementById('cover-letter-fallback');
+
+  if (
+    form instanceof HTMLFormElement &&
+    textarea instanceof HTMLTextAreaElement &&
+    button instanceof HTMLButtonElement &&
+    status instanceof HTMLElement &&
+    error instanceof HTMLElement &&
+    result instanceof HTMLElement &&
+    fallback instanceof HTMLElement
+  ) {
+    let inFlight = false;
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (inFlight) return;
+
+      const jobDescription = textarea.value.trim();
+      if (!jobDescription) {
+        error.textContent = 'Please enter a job description.';
+        status.textContent = '';
+        return;
+      }
+
+      inFlight = true;
+      button.disabled = true;
+      error.textContent = '';
+      result.textContent = '';
+      result.hidden = true;
+      fallback.hidden = true;
+      status.textContent = 'Writing your letter…';
+
+      try {
+        const response = await fetch('/api/cover-letter', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({ jobDescription }),
+        });
+
+        let data = null;
+        try {
+          data = await response.json();
+        } catch {
+          data = null;
+        }
+
+        if (
+          response.status === 200 &&
+          data &&
+          data.ok === true &&
+          typeof data.letter === 'string'
+        ) {
+          result.textContent = data.letter;
+          result.hidden = false;
+          status.textContent = 'Your letter is ready.';
+        } else if (response.status === 400) {
+          error.textContent =
+            data && typeof data.message === 'string' && data.message.length > 0
+              ? data.message
+              : 'Please check your job description and try again.';
+          status.textContent = '';
+        } else if (response.status === 429) {
+          if (data && data.error === 'daily_cap') {
+            error.textContent =
+              typeof data.message === 'string' && data.message.length > 0
+                ? data.message
+                : 'The cover-letter generator is paused for today. Please try again tomorrow or use the general cover letter.';
+          } else if (
+            data &&
+            Number.isInteger(data.retryAfterSeconds) &&
+            data.retryAfterSeconds >= 1
+          ) {
+            error.textContent =
+              'Too many cover-letter requests from this address. Please try again in ' +
+              data.retryAfterSeconds +
+              ' seconds.';
+          } else {
+            error.textContent =
+              data && typeof data.message === 'string' && data.message.length > 0
+                ? data.message
+                : 'Too many cover-letter requests from this address. Please try again later.';
+          }
+          status.textContent = '';
+        } else if (response.status === 502 || response.status === 504) {
+          error.textContent =
+            data && typeof data.message === 'string' && data.message.length > 0
+              ? data.message
+              : (response.status === 504
+                  ? 'The cover-letter generator took too long. The general cover letter is available below.'
+                  : 'The cover-letter generator could not produce a letter right now. The general cover letter is available below.');
+          fallback.hidden = false;
+          status.textContent = '';
+        } else if (response.status === 503) {
+          error.textContent =
+            data && typeof data.message === 'string' && data.message.length > 0
+              ? data.message
+              : 'The cover-letter generator is unavailable right now';
+          status.textContent = '';
+        } else {
+          error.textContent =
+            'Something went wrong. Please use the general cover letter or the contact form.';
+          status.textContent = '';
+        }
+      } catch {
+        error.textContent =
+          'Something went wrong. Please use the general cover letter or the contact form.';
+        status.textContent = '';
+      } finally {
+        button.disabled = false;
+        inFlight = false;
+      }
+    });
+  }
+</script>
+
+<style>
+  .cover-letter-generator {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--bg-muted);
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--fg-heading);
+    margin-top: 0;
+    margin-bottom: 1rem;
+  }
+
+  noscript p {
+    margin-bottom: 1.25rem;
+    padding: 0.75rem 1rem;
+    background-color: var(--bg-muted);
+    border-radius: 4px;
+    color: var(--fg);
+  }
+
+  noscript a {
+    color: var(--fg-link);
+  }
+
+  noscript a:hover {
+    color: var(--fg-link-hover);
+  }
+
+  .cover-letter-form {
+    max-width: 600px;
+  }
+
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .form-group textarea {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font: inherit;
+    font-size: 1rem;
+    color: var(--fg);
+    background-color: var(--bg-form);
+    border: 1px solid var(--fg-muted);
+    border-radius: 4px;
+    box-sizing: border-box;
+    resize: vertical;
+  }
+
+  .form-group textarea:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  .cover-letter-hint {
+    margin-top: 0.375rem;
+    margin-bottom: 0;
+    font-size: 0.875rem;
+    color: var(--fg-muted);
+  }
+
+  .form-actions {
+    margin-top: 1.25rem;
+  }
+
+  .form-actions button {
+    display: inline-block;
+    padding: 0.625rem 1.5rem;
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--fg-btn);
+    background-color: var(--bg-btn);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .form-actions button:hover:not(:disabled) {
+    background-color: var(--bg-btn-hover);
+    color: var(--fg-btn-hover);
+  }
+
+  .form-actions button:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  .form-actions button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  #cover-letter-status {
+    margin-top: 1.25rem;
+    margin-bottom: 0;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--fg);
+  }
+
+  #cover-letter-status:empty {
+    margin-top: 0;
+  }
+
+  #cover-letter-error {
+    margin-top: 1.25rem;
+    margin-bottom: 0;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--fg);
+  }
+
+  #cover-letter-error:empty {
+    margin-top: 0;
+  }
+
+  .cover-letter-result {
+    margin-top: 1.5rem;
+    padding: 1rem 1.25rem;
+    background-color: var(--bg-muted);
+    border-radius: 4px;
+    color: var(--fg);
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  #cover-letter-fallback {
+    margin-top: 1rem;
+    margin-bottom: 0;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--fg);
+  }
+
+  #cover-letter-fallback a {
+    color: var(--fg-link);
+  }
+
+  #cover-letter-fallback a:hover {
+    color: var(--fg-link-hover);
+  }
+</style>

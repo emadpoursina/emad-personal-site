@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "prebuild": "node scripts/check-profile.mjs && node scripts/build-cv.mjs && node scripts/check-contrast.mjs",
+    "prebuild": "node scripts/check-profile.mjs && node scripts/check-cover-letter.mjs && node scripts/build-cv.mjs && node scripts/check-contrast.mjs",
     "build": "astro build",
     "postbuild": "node scripts/check-cv.mjs && node scripts/check-static-output.mjs",
     "preview": "astro preview",

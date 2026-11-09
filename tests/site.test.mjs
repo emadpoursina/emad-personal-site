@@ -16,13 +16,14 @@ import {
 } from '../src/lib/site.mjs';
 import { buildSitemap } from '../src/lib/agent-output.mjs';
 
-test('PUBLIC_PAGE_PATHS contains the five approved public page routes', () => {
+test('PUBLIC_PAGE_PATHS contains the six approved public page routes', () => {
   assert.deepEqual(PUBLIC_PAGE_PATHS, [
     '/',
     '/about',
     '/case-studies',
     '/ask',
-    '/contact'
+    '/contact',
+    '/cover-letter'
   ]);
 });
 
@@ -60,6 +61,7 @@ test('buildSitemap with fixture of two published studies and one draft', () => {
       '/case-studies',
       '/ask',
       '/contact',
+      '/cover-letter',
       '/case-studies/published-alpha',
       '/case-studies/published-beta'
     ];

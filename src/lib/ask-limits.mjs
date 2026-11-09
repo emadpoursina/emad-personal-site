@@ -3,11 +3,12 @@
  *
  * Rate limiting and daily cap enforcement for the ask assistant.
  * - Sliding-window per-IP limiter using createRateLimiter.
- * - Atomic daily cap delegation to db.consumeDailyAsk.
+ * - Daily cap delegates to the shared daily-cap wrapper (one event row/line per day and feature).
  * - Privacy-preserving event logging (no IP or question text in logs).
  */
 
 import { createRateLimiter } from './rate-limit.mjs';
+import { consumeDaily as consumeSharedDaily } from './daily-cap.mjs';
 
 /**
  * Default requests allowed per IP per 1-hour sliding window.
@@ -76,9 +77,5 @@ export function checkPerIp(key, limit) {
  * @returns {{ count: number; allowed: boolean }}
  */
 export function consumeDaily(db, day, cap) {
-  const result = db.consumeDailyAsk(day, cap);
-  if (result.allowed === false) {
-    console.warn(JSON.stringify({ event: 'ask_daily_cap', day }));
-  }
-  return result;
+  return consumeSharedDaily(db, day, cap, 'ask');
 }

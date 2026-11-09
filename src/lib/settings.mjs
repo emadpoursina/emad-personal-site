@@ -436,6 +436,58 @@ export function getEffectiveSmtp() {
 }
 
 /**
+ * Returns effective generator settings: { endpoint, apiKey, timeoutMs, configured }.
+ * endpoint: admin generator.endpoint > env GENERATOR_ENDPOINT > '', trailing slashes trimmed, URL-validated.
+ * apiKey: env GENERATOR_API_KEY only (never DB).
+ * timeoutMs: env GENERATOR_TIMEOUT_MS parsed as positive integer, default 30000, capped at 30000.
+ * configured: endpoint !== '' && apiKey !== ''.
+ * Fail closed on store read failure: logs warning once via warnOnce, returns { endpoint: '', apiKey, timeoutMs, configured: false }.
+ *
+ * @returns {{
+ *   endpoint: string;
+ *   apiKey: string;
+ *   timeoutMs: number;
+ *   configured: boolean;
+ * }}
+ */
+export function getEffectiveGenerator() {
+  const apiKey = String(process.env.GENERATOR_API_KEY ?? '').trim();
+
+  let timeoutMs = 30000;
+  if (typeof process.env.GENERATOR_TIMEOUT_MS === 'string' && process.env.GENERATOR_TIMEOUT_MS.trim() !== '') {
+    const raw = process.env.GENERATOR_TIMEOUT_MS.trim();
+    if (/^\d+$/.test(raw)) {
+      const parsed = Number(raw);
+      if (Number.isInteger(parsed) && parsed > 0 && String(parsed) === raw) {
+        timeoutMs = Math.min(parsed, 30000);
+      }
+    }
+  }
+
+  let endpoint = '';
+  try {
+    const resolved = resolveSettings();
+    endpoint = resolved.values.generatorEndpoint || '';
+  } catch {
+    warnOnce('generatorEffective', 'Failed to read settings for the generator; failing closed.');
+    return {
+      endpoint: '',
+      apiKey,
+      timeoutMs,
+      configured: false,
+    };
+  }
+
+  const configured = endpoint !== '' && apiKey !== '';
+  return {
+    endpoint,
+    apiKey,
+    timeoutMs,
+    configured,
+  };
+}
+
+/**
  * Returns the masked view of settings suitable for administrative UI and JSON responses.
  * Never includes full secret plaintext.
  *

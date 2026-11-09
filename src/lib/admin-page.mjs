@@ -76,7 +76,7 @@ const FIELD_DEFINITIONS = Object.freeze([
   },
   {
     name: 'askDailyCap',
-    label: 'Daily cap',
+    label: 'Daily cap (assistant + cover letter)',
     type: 'number',
     secret: false,
     min: 1,

@@ -1,0 +1,59 @@
+---
+/**
+ * src/pages/cover-letter.astro
+ *
+ * Cover letter page.
+ */
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CoverLetter from '../components/CoverLetter.astro';
+import CoverLetterForm from '../components/CoverLetterForm.astro';
+import { getEffectiveGenerator } from '../lib/settings.mjs';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+Astro.response.headers.set('Content-Type', 'text/html; charset=utf-8');
+
+const generatorConfigured = getEffectiveGenerator().configured;
+---
+
+<BaseLayout
+  title="Cover Letter — Emad Poursina"
+  description="General cover letter for Emad Poursina."
+>
+  <div class="cover-letter-container">
+    <h1>Cover Letter</h1>
+    <p class="intro">
+      General cover letter outlining professional background, backend experience, and target roles.
+    </p>
+    <div id="general-letter">
+      <CoverLetter />
+    </div>
+    {generatorConfigured && <CoverLetterForm />}
+  </div>
+</BaseLayout>
+
+<style>
+  .cover-letter-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--fg-heading);
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+  }
+
+  .intro {
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    color: var(--fg);
+    margin-bottom: 2rem;
+  }
+</style>

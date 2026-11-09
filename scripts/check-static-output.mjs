@@ -220,6 +220,8 @@ if (!existsSync(cvPath)) {
 const healthzPath    = join(DIST, 'healthz');
 const apiContactPath = join(DIST, 'api', 'contact');
 const apiProfilePath = join(DIST, 'api', 'profile');
+const coverLetterPath = join(DIST, 'cover-letter');
+const apiCoverLetterPath = join(DIST, 'api', 'cover-letter');
 
 if (existsSync(healthzPath)) {
   fail('INV-4: dist/client/healthz exists but must remain on-demand (not prerendered)');
@@ -230,6 +232,8 @@ if (existsSync(apiContactPath)) {
 if (existsSync(apiProfilePath)) {
   fail('INV-4: dist/client/api/profile exists but must remain on-demand (not prerendered)');
 }
+if (existsSync(coverLetterPath)) fail('US1-7: dist/client/cover-letter exists but must remain on-demand (not prerendered)');
+if (existsSync(apiCoverLetterPath)) fail('US1-7: dist/client/api/cover-letter exists but must remain on-demand (not prerendered)');
 
 // ---------------------------------------------------------------------------
 // Invariant 2 (Phase 2): the three prerendered agent-readable outputs exist
@@ -490,6 +494,7 @@ if (!existsSync(sitemapPath)) {
     '/case-studies',
     '/ask',
     '/contact',
+    '/cover-letter',
     '/case-studies/rousta-tv',
     '/case-studies/namehamal',
   ];

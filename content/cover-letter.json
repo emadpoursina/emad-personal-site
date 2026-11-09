@@ -1,0 +1,21 @@
+{
+  "greeting": "Dear Hiring Manager,",
+  "paragraphs": [
+    "I am a software engineer with over seven years of production Node.js experience, focused on backend architecture, AI integration, and agentic systems. I take problems end to end — from initial requirements and architecture through implementation, deployment, and release — selecting deterministic software, automation, or AI agents based on what the problem actually requires.",
+    "At VoiceDash, I owned backend services and Docker Compose multi-environment deployments for an AI dictation SaaS, managing staging and production releases, rollbacks, and operational risk across server and desktop clients. I also established agentic coding workflows for the development team and refactored AI-generated code toward a stable, maintainable architecture.",
+    "I am targeting Software Engineer, Backend Engineer, and AI or Agentic Systems Engineer roles in Canada, Ireland, the United Kingdom, the Netherlands, and Portugal. I bring practical experience taking systems from specification to production, with a focus on reliable software engineering and thoughtful AI integration."
+  ],
+  "authorization": "Requires employer-sponsored work authorization.",
+  "signoff": "Best regards, Emad Poursina",
+  "links": [
+    {
+      "label": "LinkedIn",
+      "href": "https://www.linkedin.com/in/emadpoursina/"
+    },
+    {
+      "label": "GitHub",
+      "href": "https://github.com/emadpoursina"
+    }
+  ],
+  "lastUpdated": "2026-11-09"
+}
