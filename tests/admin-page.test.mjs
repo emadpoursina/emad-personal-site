@@ -258,6 +258,12 @@ describe('src/lib/admin-page.mjs', () => {
         );
       }
 
+      // The daily cap is shared by the assistant and the cover-letter generator.
+      assert.ok(
+        html.includes('<label for="askDailyCap">Daily cap (assistant + cover letter)</label>'),
+        'askDailyCap label must state the shared assistant + cover-letter cap',
+      );
+
       // Field types and bounds
       assert.ok(html.includes('<input type="url" id="aiBaseUrl" name="aiBaseUrl"'));
       assert.ok(html.includes('<input type="text" id="aiModel" name="aiModel"'));

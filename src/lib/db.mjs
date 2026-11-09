@@ -3,13 +3,14 @@
  *
  * SQLite database layer using node:sqlite DatabaseSync.
  * - Opens lazily on first use so a broken DB never crashes server boot.
- * - Applies schema version 1 and 2 on open.
+ * - Applies schema version 1, 2, and 3 on open.
  * - Exports:
  *     contact: insertMessage, markSent, markFailed, countMessages
  *     settings: getSetting, getAllSettings, setSetting, deleteSetting, applySettings
  *     sessions: createSession, getSession, deleteSession, deleteExpiredSessions
  *     questions: insertQuestion, countQuestions
  *     counters: consumeDailyAsk
+ *     capEvents: insertCapEvent, getCapEvent, countCapEvents
  *     lifecycle: isHealthy, close
  */
 
@@ -28,7 +29,7 @@ let _healthy = null;
 let _errorReason = null;
 
 // Schema version this code expects.
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 const CREATE_TABLE_SQL = `
   CREATE TABLE IF NOT EXISTS contact_messages (
@@ -74,6 +75,15 @@ CREATE TABLE IF NOT EXISTS ask_daily_counters (
   day        TEXT PRIMARY KEY,
   count      INTEGER NOT NULL DEFAULT 0,
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+`.trim();
+
+const SCHEMA_V3_SQL = `
+CREATE TABLE IF NOT EXISTS daily_cap_events (
+  day        TEXT NOT NULL,
+  feature    TEXT NOT NULL CHECK (feature IN ('ask','cover_letter')),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (day, feature)
 );
 `.trim();
 
@@ -126,7 +136,12 @@ function getDb() {
     if (version < 2) {
       // Apply schema version 2
       db.exec(SCHEMA_V2_SQL);
-      db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+      db.exec('PRAGMA user_version = 2');
+    }
+    if (version < 3) {
+      // Apply schema version 3
+      db.exec(SCHEMA_V3_SQL);
+      db.exec('PRAGMA user_version = 3');
     }
 
     _db = db;
@@ -409,6 +424,61 @@ export function consumeDailyAsk(day, cap) {
     count,
     allowed: count <= cap,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Daily cap event accessors
+// ---------------------------------------------------------------------------
+
+const INSERT_CAP_EVENT_SQL = `
+INSERT OR IGNORE INTO daily_cap_events (day, feature) VALUES (?, ?)
+`.trim();
+
+/**
+ * Inserts a daily cap event (one row per day and feature). Idempotent via INSERT OR IGNORE.
+ * @param {string} day - UTC date string 'YYYY-MM-DD'
+ * @param {'ask' | 'cover_letter'} feature
+ */
+export function insertCapEvent(day, feature) {
+  const db = getDb();
+  if (!db) throw new Error('Database is not available');
+
+  db.prepare(INSERT_CAP_EVENT_SQL).run(day, feature);
+}
+
+/**
+ * Retrieves a daily cap event row by day and feature, or null if none exists.
+ * @param {string} day - UTC date string 'YYYY-MM-DD'
+ * @param {string} feature
+ * @returns {{ day: string; feature: string; created_at: string } | null}
+ */
+export function getCapEvent(day, feature) {
+  const db = getDb();
+  if (!db) throw new Error('Database is not available');
+
+  const row = /** @type {{ day: string; feature: string; created_at: string } | undefined} */ (
+    db.prepare('SELECT day, feature, created_at FROM daily_cap_events WHERE day = ? AND feature = ?').get(day, feature)
+  );
+  if (!row) return null;
+  return {
+    day: row.day,
+    feature: row.feature,
+    created_at: row.created_at,
+  };
+}
+
+/**
+ * Returns the total number of rows in daily_cap_events.
+ * @returns {number}
+ */
+export function countCapEvents() {
+  const db = getDb();
+  if (!db) throw new Error('Database is not available');
+
+  const row = /** @type {{ n: number }} */ (
+    db.prepare('SELECT COUNT(*) AS n FROM daily_cap_events').get()
+  );
+  return Number(row.n);
 }
 
 // ---------------------------------------------------------------------------

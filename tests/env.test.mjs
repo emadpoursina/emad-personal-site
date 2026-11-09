@@ -337,4 +337,206 @@ describe('src/lib/env.mjs - assistant and admin configuration', () => {
       console.warn = origWarn;
     }
   });
+
+  test('defaults when generator names are unset: GENERATOR_ENDPOINT, GENERATOR_API_KEY, GENERATOR_TIMEOUT_MS', () => {
+    delete process.env.GENERATOR_ENDPOINT;
+    delete process.env.GENERATOR_API_KEY;
+    delete process.env.GENERATOR_TIMEOUT_MS;
+
+    const conf = getConfig();
+    assert.equal(conf.GENERATOR_ENDPOINT, '');
+    assert.equal(conf.GENERATOR_API_KEY, '');
+    assert.equal(conf.GENERATOR_TIMEOUT_MS, 30000);
+  });
+
+  test('raw string passthrough for GENERATOR_ENDPOINT and GENERATOR_API_KEY', () => {
+    process.env.GENERATOR_ENDPOINT = '  https://llm.example.com/v1/generate/  ';
+    process.env.GENERATOR_API_KEY = '  raw-generator-key-secret-xyz  ';
+
+    const conf = getConfig();
+    assert.equal(conf.GENERATOR_ENDPOINT, '  https://llm.example.com/v1/generate/  ');
+    assert.equal(conf.GENERATOR_API_KEY, '  raw-generator-key-secret-xyz  ');
+  });
+
+  test('GENERATOR_TIMEOUT_MS parsing accepts valid and boundary values and clamps values above 30000', () => {
+    process.env.GENERATOR_TIMEOUT_MS = '15000';
+    let conf = getConfig();
+    assert.equal(conf.GENERATOR_TIMEOUT_MS, 15000);
+
+    reset();
+    process.env.GENERATOR_TIMEOUT_MS = '1';
+    conf = getConfig();
+    assert.equal(conf.GENERATOR_TIMEOUT_MS, 1);
+
+    reset();
+    process.env.GENERATOR_TIMEOUT_MS = '30000';
+    conf = getConfig();
+    assert.equal(conf.GENERATOR_TIMEOUT_MS, 30000);
+
+    reset();
+    process.env.GENERATOR_TIMEOUT_MS = '60000';
+    conf = getConfig();
+    assert.equal(conf.GENERATOR_TIMEOUT_MS, 30000);
+
+    reset();
+    process.env.GENERATOR_TIMEOUT_MS = '999999';
+    conf = getConfig();
+    assert.equal(conf.GENERATOR_TIMEOUT_MS, 30000);
+  });
+
+  test('invalid GENERATOR_TIMEOUT_MS values fall back to 30000 with a warning naming GENERATOR_TIMEOUT_MS', () => {
+    const invalidCases = ['bad', '0', '-5', '12.5'];
+    for (const invalid of invalidCases) {
+      reset();
+      process.env.GENERATOR_TIMEOUT_MS = invalid;
+      const warnings = [];
+      const origWarn = console.warn;
+      console.warn = (msg) => warnings.push(msg);
+      try {
+        const conf = getConfig();
+        assert.equal(conf.GENERATOR_TIMEOUT_MS, 30000);
+        assert.equal(
+          warnings.some((w) => w.includes('GENERATOR_TIMEOUT_MS')),
+          true,
+          `Expected warning for GENERATOR_TIMEOUT_MS=${invalid}`
+        );
+      } finally {
+        console.warn = origWarn;
+      }
+    }
+  });
+
+  test('partial-configuration warning: endpoint-only and key-only warn once with exact message, re-warn after reset; both-empty and both-set emit no warning', () => {
+    const expectedMessage = 'Generator is unconfigured (GENERATOR_ENDPOINT, GENERATOR_API_KEY required).';
+
+    // 1. endpoint-only
+    reset();
+    process.env.GENERATOR_ENDPOINT = 'https://llm.example.com';
+    delete process.env.GENERATOR_API_KEY;
+    let warnings = [];
+    let origWarn = console.warn;
+    console.warn = (msg) => warnings.push(msg);
+    try {
+      getConfig();
+      getConfig(); // second call in same cycle must not duplicate
+      const genWarnings = warnings.filter((w) => w.includes(expectedMessage));
+      assert.equal(genWarnings.length, 1, 'endpoint-only must warn exactly once');
+
+      reset();
+      getConfig();
+      getConfig();
+      const genWarningsAfterReset = warnings.filter((w) => w.includes(expectedMessage));
+      assert.equal(genWarningsAfterReset.length, 2, 'endpoint-only must warn again after reset');
+    } finally {
+      console.warn = origWarn;
+    }
+
+    // 2. key-only
+    reset();
+    delete process.env.GENERATOR_ENDPOINT;
+    process.env.GENERATOR_API_KEY = 'secret-generator-key';
+    warnings = [];
+    origWarn = console.warn;
+    console.warn = (msg) => warnings.push(msg);
+    try {
+      getConfig();
+      getConfig();
+      const genWarnings = warnings.filter((w) => w.includes(expectedMessage));
+      assert.equal(genWarnings.length, 1, 'key-only must warn exactly once');
+
+      reset();
+      getConfig();
+      getConfig();
+      const genWarningsAfterReset = warnings.filter((w) => w.includes(expectedMessage));
+      assert.equal(genWarningsAfterReset.length, 2, 'key-only must warn again after reset');
+    } finally {
+      console.warn = origWarn;
+    }
+
+    // 3. both-empty
+    reset();
+    delete process.env.GENERATOR_ENDPOINT;
+    delete process.env.GENERATOR_API_KEY;
+    warnings = [];
+    origWarn = console.warn;
+    console.warn = (msg) => warnings.push(msg);
+    try {
+      getConfig();
+      const genWarnings = warnings.filter((w) => w.includes('Generator is unconfigured') || w.includes('GENERATOR_ENDPOINT'));
+      assert.equal(genWarnings.length, 0, 'both-empty must emit no generator warning');
+    } finally {
+      console.warn = origWarn;
+    }
+
+    // 4. both-set
+    reset();
+    process.env.GENERATOR_ENDPOINT = 'https://llm.example.com';
+    process.env.GENERATOR_API_KEY = 'secret-generator-key';
+    warnings = [];
+    origWarn = console.warn;
+    console.warn = (msg) => warnings.push(msg);
+    try {
+      getConfig();
+      const genWarnings = warnings.filter((w) => w.includes('Generator is unconfigured') || w.includes('GENERATOR_ENDPOINT'));
+      assert.equal(genWarnings.length, 0, 'both-set must emit no generator warning');
+    } finally {
+      console.warn = origWarn;
+    }
+  });
+
+  test('no warning or config-derived output ever contains configured GENERATOR_API_KEY or GENERATOR_ENDPOINT', () => {
+    const markerEndpoint = 'https://distinctive-marker-endpoint.example.corp/v1';
+    const markerApiKey = 'distinctive-generator-key-xyz-777-secret';
+    const markerBadTimeout = 'distinctive-bad-timeout-marker-888';
+
+    // Test 1: partial config (endpoint only)
+    reset();
+    process.env.GENERATOR_ENDPOINT = markerEndpoint;
+    delete process.env.GENERATOR_API_KEY;
+    let warnings = [];
+    let origWarn = console.warn;
+    console.warn = (msg) => warnings.push(msg);
+    try {
+      getConfig();
+      const allWarnings = warnings.join('\n');
+      assert.equal(allWarnings.includes(markerEndpoint), false, 'GENERATOR_ENDPOINT must never appear in warnings');
+      assert.equal(allWarnings.includes(markerApiKey), false, 'GENERATOR_API_KEY must never appear in warnings');
+    } finally {
+      console.warn = origWarn;
+    }
+
+    // Test 2: partial config (key only)
+    reset();
+    delete process.env.GENERATOR_ENDPOINT;
+    process.env.GENERATOR_API_KEY = markerApiKey;
+    warnings = [];
+    origWarn = console.warn;
+    console.warn = (msg) => warnings.push(msg);
+    try {
+      getConfig();
+      const allWarnings = warnings.join('\n');
+      assert.equal(allWarnings.includes(markerEndpoint), false, 'GENERATOR_ENDPOINT must never appear in warnings');
+      assert.equal(allWarnings.includes(markerApiKey), false, 'GENERATOR_API_KEY must never appear in warnings');
+    } finally {
+      console.warn = origWarn;
+    }
+
+    // Test 3: both set with invalid timeout
+    reset();
+    process.env.GENERATOR_ENDPOINT = markerEndpoint;
+    process.env.GENERATOR_API_KEY = markerApiKey;
+    process.env.GENERATOR_TIMEOUT_MS = markerBadTimeout;
+    warnings = [];
+    origWarn = console.warn;
+    console.warn = (msg) => warnings.push(msg);
+    try {
+      getConfig();
+      const allWarnings = warnings.join('\n');
+      assert.equal(allWarnings.includes(markerEndpoint), false, 'GENERATOR_ENDPOINT must never appear in warnings');
+      assert.equal(allWarnings.includes(markerApiKey), false, 'GENERATOR_API_KEY must never appear in warnings');
+      assert.equal(allWarnings.includes(markerBadTimeout), false, 'GENERATOR_TIMEOUT_MS input must never appear in warnings');
+    } finally {
+      console.warn = origWarn;
+    }
+  });
 });

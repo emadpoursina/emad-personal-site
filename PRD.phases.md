@@ -66,7 +66,7 @@
 - [ ] With the generator configured, a submitted job description returns a letter with the required lines, and an unavailable generator falls back to the general letter
 - [ ] More than 10 `/api/cover-letter` requests from one IP within an hour return HTTP 429
 **Out of scope:** Tailored CV per job (F13, V1.1).
-**Spec:** none
+**Spec:** specs/004-general-cover-letter-and-generator
 
 ## Deferred
 

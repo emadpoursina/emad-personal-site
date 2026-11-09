@@ -7,7 +7,7 @@
  *  - Discovers chrome-headless-shell or installs Chromium via Playwright
  *  - Resolves browser path by glob
  *  - Starts built standalone server on an ephemeral port
- *  - Executes Lighthouse 11.7.1 three times per page (/, /about, /case-studies/rousta-tv)
+ *  - Executes Lighthouse 11.7.1 three times per page (/, /about, /ask, /case-studies/rousta-tv, /cover-letter)
  *  - Gates on median Performance >= 95, Accessibility = 100, LCP < 2000 ms per page
  *  - Supports --self-test to verify gate logic without launching a browser
  */
@@ -29,6 +29,7 @@ export const PAGES = [
   { name: 'about', path: '/about' },
   { name: 'ask', path: '/ask' },
   { name: 'rousta-tv', path: '/case-studies/rousta-tv' },
+  { name: 'cover-letter', path: '/cover-letter' },
 ];
 
 /**

@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 
 import { SKILL_CATEGORY_ORDER, displayLevel } from '../src/lib/skills.mjs';
 import { publishedStudies } from '../src/lib/case-studies.mjs';
+import { BANNED_PHRASES, REQUIRED_AUTHORIZATION, SIGNOFF } from '../src/lib/cover-letter.mjs';
 import { DRAFT_SLUG, DRAFT_URL, firstDifference } from './lib/contract.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -36,6 +37,7 @@ if (!existsSync(ENTRY)) {
 
 const profile = JSON.parse(readFileSync(path.join(ROOT, 'content', 'profile.json'), 'utf8'));
 const studiesDoc = JSON.parse(readFileSync(path.join(ROOT, 'content', 'case-studies.json'), 'utf8'));
+const letterDoc = JSON.parse(readFileSync(path.join(ROOT, 'content', 'cover-letter.json'), 'utf8'));
 const published = publishedStudies(studiesDoc);
 
 // "VoiceDash" is approved public CV content (an employer role and a profile
@@ -368,6 +370,397 @@ try {
         fail('/ask', 'missing exact text "AI assistant. The CV and case studies are the source of record."');
       }
       pass('GET /ask');
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 2c. /cover-letter (unconfigured)
+  // -------------------------------------------------------------------------
+
+  let unconfiguredArticleHtml = '';
+
+  {
+    const { res, body } = await fetchRoute('/cover-letter', { contentType: 'text/html; charset=utf-8' });
+    if (res.status === 200) {
+      // 1. Cache-Control contains no-store.
+      const cache = res.headers.get('cache-control') ?? '';
+      if (!/no-store/i.test(cache)) {
+        fail('/cover-letter', `expected Cache-Control no-store, got ${cache || '(none)'}`);
+      }
+
+      // 2. Exactly one <h1>, whose text is exactly 'Cover Letter' (use headingTexts).
+      const h1s = headingTexts(body, 'h1');
+      if (h1s.length !== 1 || h1s[0] !== 'Cover Letter') {
+        fail('/cover-letter', `expected exactly one <h1> with text "Cover Letter", got ${JSON.stringify(h1s)}`);
+      }
+
+      // 3. There is a <main> and inside it exactly one <article> region (regex /<article\b[^>]*>([\s\S]*?)<\/article>/i on mainInnerHtml).
+      const main = mainInnerHtml(body);
+      if (main === null) {
+        fail('/cover-letter', 'has no <main> element');
+      } else {
+        const articleMatches = [...main.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi)];
+        if (articleMatches.length !== 1) {
+          fail('/cover-letter', `expected exactly one <article> region inside <main>, got ${articleMatches.length}`);
+        } else {
+          const articleHtml = articleMatches[0][1];
+          unconfiguredArticleHtml = articleMatches[0][1];
+          const letterText = visibleText(articleHtml).trim();
+
+          // 4. The article's visible text (visibleText(articleHtml).trim()) starts with letterDoc.greeting — so the greeting is the first letter text, with no city/date line above it.
+          if (!letterText.startsWith(letterDoc.greeting)) {
+            fail('/cover-letter', `article text does not start with greeting "${letterDoc.greeting}"`);
+          }
+
+          // 5. Every letterDoc.paragraphs entry appears in that text, in order (letterText.indexOf(paragraph) strictly increasing from 0).
+          let lastParagraphIndex = -1;
+          for (const paragraph of letterDoc.paragraphs) {
+            const pIdx = letterText.indexOf(paragraph);
+            if (pIdx === -1) {
+              fail('/cover-letter', `missing paragraph: "${paragraph.slice(0, 30)}..."`);
+            } else if (pIdx <= lastParagraphIndex) {
+              fail('/cover-letter', `paragraph out of order: "${paragraph.slice(0, 30)}..." (index ${pIdx} <= ${lastParagraphIndex})`);
+            }
+            lastParagraphIndex = pIdx;
+          }
+
+          // 6. The exact authorization line REQUIRED_AUTHORIZATION appears, and the exact sign-off SIGNOFF appears after it (both present, authorization index < sign-off index).
+          const authIdx = letterText.indexOf(REQUIRED_AUTHORIZATION);
+          const signoffIdx = letterText.indexOf(SIGNOFF);
+          if (authIdx === -1) {
+            fail('/cover-letter', `missing exact authorization line "${REQUIRED_AUTHORIZATION}"`);
+          }
+          if (signoffIdx === -1) {
+            fail('/cover-letter', `missing exact sign-off "${SIGNOFF}"`);
+          }
+          if (authIdx !== -1 && signoffIdx !== -1 && authIdx >= signoffIdx) {
+            fail('/cover-letter', `authorization line (index ${authIdx}) must appear before sign-off (index ${signoffIdx})`);
+          }
+
+          // 7. The letter contains no banned phrase: for each phrase in BANNED_PHRASES, assert the lowercased letter text does not include the lowercased phrase; fail naming the phrase.
+          const lowerLetterText = letterText.toLowerCase();
+          for (const phrase of BANNED_PHRASES) {
+            if (lowerLetterText.includes(phrase.toLowerCase())) {
+              fail('/cover-letter', `letter contains banned phrase: "${phrase}"`);
+            }
+          }
+
+          // 8. Links: inside the article find exactly one <ul>; inside it exactly two <li> elements; each <li> holds exactly one <a href="...">; item 0 has href letterDoc.links[0].href and visible label 'LinkedIn', item 1 has href letterDoc.links[1].href and visible label 'GitHub'. Assert the <ul> begins after the sign-off text in the article HTML (compare regex match.index with articleHtml.indexOf(letterDoc.signoff)).
+          const ulMatches = [...articleHtml.matchAll(/<ul\b[^>]*>([\s\S]*?)<\/ul>/gi)];
+          if (ulMatches.length !== 1) {
+            fail('/cover-letter', `expected exactly one <ul> inside <article>, got ${ulMatches.length}`);
+          } else {
+            const ulMatch = /<ul\b[^>]*>[\s\S]*?<\/ul>/i.exec(articleHtml);
+            const ulStartIndex = ulMatch ? ulMatch.index : -1;
+            const signoffHtmlIndex = articleHtml.indexOf(letterDoc.signoff);
+            if (signoffHtmlIndex === -1) {
+              fail('/cover-letter', 'sign-off text not found in article HTML');
+            } else if (ulStartIndex <= signoffHtmlIndex) {
+              fail('/cover-letter', `<ul> begins at index ${ulStartIndex}, which is not after sign-off text (index ${signoffHtmlIndex})`);
+            }
+
+            const ulInner = ulMatches[0][1];
+            const liMatches = [...ulInner.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)];
+            if (liMatches.length !== 2) {
+              fail('/cover-letter', `expected exactly two <li> elements inside <ul>, got ${liMatches.length}`);
+            } else {
+              const expectedLinks = [
+                { href: letterDoc.links[0]?.href, label: 'LinkedIn' },
+                { href: letterDoc.links[1]?.href, label: 'GitHub' },
+              ];
+              for (let i = 0; i < 2; i++) {
+                const liInner = liMatches[i][1];
+                const aMatches = [...liInner.matchAll(/<a\b[^>]*\bhref=["']([^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi)];
+                if (aMatches.length !== 1) {
+                  fail('/cover-letter', `expected exactly one <a> in <li>[${i}], got ${aMatches.length}`);
+                } else {
+                  const href = aMatches[0][1];
+                  const label = decodeHtmlEntities(aMatches[0][2].replace(/<[^>]+>/g, '')).trim();
+                  if (href !== expectedLinks[i].href) {
+                    fail('/cover-letter', `link[${i}] href expected "${expectedLinks[i].href}", got "${href}"`);
+                  }
+                  if (label !== expectedLinks[i].label) {
+                    fail('/cover-letter', `link[${i}] label expected "${expectedLinks[i].label}", got "${label}"`);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 9. Unconfigured page has no form: /<form\b/i must not match anywhere in the body.
+      if (/<form\b/i.test(body)) {
+        fail('/cover-letter', 'unconfigured page must not contain a <form> element');
+      }
+
+      // 10. No executable script: every <script> tag in the body must be type="application/ld+json" (count all script tags and assert the non-JSON-LD count is 0).
+      const allScriptTags = [...body.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+      const nonJsonLdScripts = allScriptTags.filter((m) => !/type\s*=\s*["']application\/ld\+json["']/i.test(m[1]));
+      if (nonJsonLdScripts.length !== 0) {
+        fail('/cover-letter', `expected 0 non-JSON-LD scripts, got ${nonJsonLdScripts.length}`);
+      }
+
+      // 11. No-JS readability: strip every <script ...>...</script> from the body, run visibleText on the result, and assert it still contains the greeting, every paragraph, the exact authorization line, and the exact sign-off.
+      const noScriptBody = body.replace(/<script\b[\s\S]*?<\/script>/gi, '');
+      const noScriptText = visibleText(noScriptBody);
+      if (!noScriptText.includes(letterDoc.greeting)) {
+        fail('/cover-letter', 'no-JS body missing greeting');
+      }
+      for (const paragraph of letterDoc.paragraphs) {
+        if (!noScriptText.includes(paragraph)) {
+          fail('/cover-letter', `no-JS body missing paragraph "${paragraph.slice(0, 30)}..."`);
+        }
+      }
+      if (!noScriptText.includes(REQUIRED_AUTHORIZATION)) {
+        fail('/cover-letter', `no-JS body missing authorization "${REQUIRED_AUTHORIZATION}"`);
+      }
+      if (!noScriptText.includes(SIGNOFF)) {
+        fail('/cover-letter', `no-JS body missing sign-off "${SIGNOFF}"`);
+      }
+
+      // POST probes against unconfigured server
+      {
+        const postRes = await fetch(`${base}/api/cover-letter`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Origin: base },
+          body: JSON.stringify({ jobDescription: 'Senior backend engineer role' }),
+        });
+        if (postRes.status !== 503) {
+          fail('/api/cover-letter (unconfigured)', `expected status 503, got ${postRes.status}`);
+        }
+        let json = null;
+        try {
+          json = await postRes.json();
+        } catch {
+          fail('/api/cover-letter (unconfigured)', 'response is not JSON');
+        }
+        const expected503 = {
+          ok: false,
+          error: 'unconfigured',
+          message: 'The cover-letter generator is unavailable right now',
+        };
+        if (JSON.stringify(json) !== JSON.stringify(expected503)) {
+          fail('/api/cover-letter (unconfigured)', `expected body ${JSON.stringify(expected503)}, got ${JSON.stringify(json)}`);
+        }
+      }
+
+      {
+        const postRes = await fetch(`${base}/api/cover-letter`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Origin: base },
+          body: JSON.stringify({ jobDescription: '' }),
+        });
+        if (postRes.status !== 400) {
+          fail('/api/cover-letter (unconfigured empty)', `expected status 400, got ${postRes.status}`);
+        }
+        let json = null;
+        try {
+          json = await postRes.json();
+        } catch {
+          fail('/api/cover-letter (unconfigured empty)', 'response is not JSON');
+        }
+        if (json?.error !== 'validation') {
+          fail('/api/cover-letter (unconfigured empty)', `expected error "validation", got ${JSON.stringify(json?.error)}`);
+        }
+        if (json?.message !== 'Job description is required.') {
+          fail('/api/cover-letter (unconfigured empty)', `expected message "Job description is required.", got ${JSON.stringify(json?.message)}`);
+        }
+        if (json?.errors?.jobDescription !== json?.message) {
+          fail('/api/cover-letter (unconfigured empty)', `expected errors.jobDescription to equal message, got ${JSON.stringify(json?.errors?.jobDescription)}`);
+        }
+      }
+
+      pass('GET /cover-letter (unconfigured)');
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 2d. /cover-letter (configured generator)
+  // -------------------------------------------------------------------------
+
+  {
+    const configuredDataDir = mkdtempSync(path.join(os.tmpdir(), 'public-routes-configured-'));
+    const configuredPort = await getFreePort();
+    const configuredBase = `http://127.0.0.1:${configuredPort}`;
+    let configuredProc = null;
+
+    try {
+      configuredProc = spawn(process.execPath, ['--experimental-sqlite', 'dist/server/entry.mjs'], {
+        cwd: ROOT,
+        env: {
+          ...process.env,
+          PORT: String(configuredPort),
+          HOST: '127.0.0.1',
+          DATA_DIR: configuredDataDir,
+          GENERATOR_ENDPOINT: 'http://127.0.0.1:9/generate',
+          GENERATOR_API_KEY: 'test-generator-key-public-routes',
+          TRUST_PROXY: '0',
+        },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+
+      await waitForHealthz(configuredPort);
+
+      const res = await fetch(`${configuredBase}/cover-letter`);
+      const body = await res.text();
+
+      // GET `${configuredBase}/cover-letter`: status 200; Cache-Control contains no-store; Content-Type starts with text/html.
+      if (res.status !== 200) {
+        fail('/cover-letter (configured)', `expected status 200, got ${res.status}`);
+      }
+      const cache = res.headers.get('cache-control') ?? '';
+      if (!/no-store/i.test(cache)) {
+        fail('/cover-letter (configured)', `expected Cache-Control to contain no-store, got ${cache || '(none)'}`);
+      }
+      const contentType = res.headers.get('content-type') ?? '';
+      if (!contentType.toLowerCase().startsWith('text/html')) {
+        fail('/cover-letter (configured)', `expected Content-Type to start with text/html, got ${contentType || '(none)'}`);
+      }
+
+      // Form present: raw body includes '<form', 'id="jobDescription"', 'name="jobDescription"', 'maxlength="8000"', 'aria-describedby="jobDescription-hint"', '<label', 'for="jobDescription"', 'role="status"', 'aria-live="polite"', 'role="alert"'.
+      const requiredSnippets = [
+        '<form',
+        'id="jobDescription"',
+        'name="jobDescription"',
+        'maxlength="8000"',
+        'aria-describedby="jobDescription-hint"',
+        '<label',
+        'for="jobDescription"',
+        'role="status"',
+        'aria-live="polite"',
+        'role="alert"',
+      ];
+      for (const snippet of requiredSnippets) {
+        if (!body.includes(snippet)) {
+          fail('/cover-letter (configured)', `missing required snippet "${snippet}"`);
+        }
+      }
+
+      // At most one module script: count matches of /<script\b[^>]*\btype=["']module["'][^>]*\bsrc=["']\/_astro\/[^"']*["'][^>]*>/gi and fail if count > 1.
+      const moduleScriptMatches = [...body.matchAll(/<script\b[^>]*\btype=["']module["'][^>]*\bsrc=["']\/_astro\/[^"']*["'][^>]*>/gi)];
+      if (moduleScriptMatches.length > 1) {
+        fail('/cover-letter (configured)', `expected at most 1 module script, got ${moduleScriptMatches.length}`);
+      }
+
+      // Executable scripts in configured body: every <script\b([^>]*)> tag whose attributes do not contain type="application/ld+json".
+      const allScriptTags = [...body.matchAll(/<script\b([^>]*)>/gi)];
+      const executableScriptMatches = allScriptTags.filter((m) => !m[1].includes('type="application/ld+json"'));
+      if (executableScriptMatches.length !== 1) {
+        fail('/cover-letter (configured)', `expected exactly 1 executable script, got ${executableScriptMatches.length}`);
+      } else {
+        const scriptAttrs = executableScriptMatches[0][1];
+        if (!/type=["']module["']/i.test(scriptAttrs)) {
+          fail('/cover-letter (configured)', `expected executable script to have type="module", got attrs: ${scriptAttrs}`);
+        }
+      }
+
+      if (!body.includes('Writing your letter')) {
+        fail('/cover-letter (configured)', 'missing literal string "Writing your letter"');
+      }
+
+      // Exactly one <article> inside <main>; its inner HTML MUST equal `unconfiguredArticleHtml` exactly (the general letter is unchanged beside the form). Its visible text must contain the greeting first, every paragraph in order, REQUIRED_AUTHORIZATION before SIGNOFF, and both letterDoc.links hrefs; no BANNED_PHRASES (case-insensitive) in the article text.
+      const main = mainInnerHtml(body);
+      if (main === null) {
+        fail('/cover-letter (configured)', 'has no <main> element');
+      } else {
+        const articleMatches = [...main.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi)];
+        if (articleMatches.length !== 1) {
+          fail('/cover-letter (configured)', `expected exactly one <article> region inside <main>, got ${articleMatches.length}`);
+        } else {
+          const articleHtml = articleMatches[0][1];
+          if (articleHtml !== unconfiguredArticleHtml) {
+            fail('/cover-letter (configured)', 'configured article HTML does not equal unconfigured article HTML exactly');
+          }
+
+          const letterText = visibleText(articleHtml).trim();
+          if (!letterText.startsWith(letterDoc.greeting)) {
+            fail('/cover-letter (configured)', `article text does not start with greeting "${letterDoc.greeting}"`);
+          }
+
+          let lastParagraphIndex = -1;
+          for (const paragraph of letterDoc.paragraphs) {
+            const pIdx = letterText.indexOf(paragraph);
+            if (pIdx === -1) {
+              fail('/cover-letter (configured)', `missing paragraph: "${paragraph.slice(0, 30)}..."`);
+            } else if (pIdx <= lastParagraphIndex) {
+              fail('/cover-letter (configured)', `paragraph out of order: "${paragraph.slice(0, 30)}..." (index ${pIdx} <= ${lastParagraphIndex})`);
+            }
+            lastParagraphIndex = pIdx;
+          }
+
+          const authIdx = letterText.indexOf(REQUIRED_AUTHORIZATION);
+          const signoffIdx = letterText.indexOf(SIGNOFF);
+          if (authIdx === -1) {
+            fail('/cover-letter (configured)', `missing exact authorization line "${REQUIRED_AUTHORIZATION}"`);
+          }
+          if (signoffIdx === -1) {
+            fail('/cover-letter (configured)', `missing exact sign-off "${SIGNOFF}"`);
+          }
+          if (authIdx !== -1 && signoffIdx !== -1 && authIdx >= signoffIdx) {
+            fail('/cover-letter (configured)', `authorization line (index ${authIdx}) must appear before sign-off (index ${signoffIdx})`);
+          }
+
+          const link0Href = letterDoc.links[0]?.href;
+          const link1Href = letterDoc.links[1]?.href;
+          if (link0Href && !articleHtml.includes(`href="${link0Href}"`)) {
+            fail('/cover-letter (configured)', `missing link href "${link0Href}"`);
+          }
+          if (link1Href && !articleHtml.includes(`href="${link1Href}"`)) {
+            fail('/cover-letter (configured)', `missing link href "${link1Href}"`);
+          }
+
+          const lowerLetterText = letterText.toLowerCase();
+          for (const phrase of BANNED_PHRASES) {
+            if (lowerLetterText.includes(phrase.toLowerCase())) {
+              fail('/cover-letter (configured)', `letter contains banned phrase: "${phrase}"`);
+            }
+          }
+        }
+      }
+
+      // The form appears after the article: body.indexOf('<form') > body.indexOf('</article>').
+      const formIdx = body.indexOf('<form');
+      const articleEndIdx = body.indexOf('</article>');
+      if (formIdx === -1) {
+        fail('/cover-letter (configured)', 'missing <form');
+      }
+      if (articleEndIdx === -1) {
+        fail('/cover-letter (configured)', 'missing </article>');
+      }
+      if (formIdx !== -1 && articleEndIdx !== -1 && formIdx <= articleEndIdx) {
+        fail('/cover-letter (configured)', `form index (${formIdx}) must be greater than </article> index (${articleEndIdx})`);
+      }
+
+      // No-JS: strip every <script...>...</script> from the configured body, run visibleText, and assert it still contains the greeting, every paragraph, REQUIRED_AUTHORIZATION, and SIGNOFF.
+      const noScriptBody = body.replace(/<script\b[\s\S]*?<\/script>/gi, '');
+      const noScriptText = visibleText(noScriptBody);
+      if (!noScriptText.includes(letterDoc.greeting)) {
+        fail('/cover-letter (configured)', 'no-JS body missing greeting');
+      }
+      for (const paragraph of letterDoc.paragraphs) {
+        if (!noScriptText.includes(paragraph)) {
+          fail('/cover-letter (configured)', `no-JS body missing paragraph "${paragraph.slice(0, 30)}..."`);
+        }
+      }
+      if (!noScriptText.includes(REQUIRED_AUTHORIZATION)) {
+        fail('/cover-letter (configured)', `no-JS body missing authorization "${REQUIRED_AUTHORIZATION}"`);
+      }
+      if (!noScriptText.includes(SIGNOFF)) {
+        fail('/cover-letter (configured)', `no-JS body missing sign-off "${SIGNOFF}"`);
+      }
+
+      pass('GET /cover-letter (configured generator)');
+    } finally {
+      await stopProc(configuredProc);
+      for (let attempt = 0; attempt < 10; attempt++) {
+        try {
+          rmSync(configuredDataDir, { recursive: true, force: true });
+          break;
+        } catch {
+          await new Promise((r) => setTimeout(r, 200));
+        }
+      }
     }
   }
 
@@ -715,7 +1108,7 @@ try {
           return loc;
         }
       });
-      const expectedPaths = ['/', '/about', '/case-studies', '/ask', '/contact',
+      const expectedPaths = ['/', '/about', '/case-studies', '/ask', '/contact', '/cover-letter',
         ...published.map((study) => `/case-studies/${study.slug}`)];
       const diff = firstDifference(paths, expectedPaths, 'loc[]');
       if (diff) fail('/sitemap.xml', `URL list mismatch: ${diff}`);
@@ -740,7 +1133,7 @@ try {
 
   {
     /** @type {string[]} */
-    const pages = ['/', '/about', '/case-studies', '/ask', '/contact',
+    const pages = ['/', '/about', '/case-studies', '/ask', '/contact', '/cover-letter',
       ...published.map((study) => `/case-studies/${study.slug}`)];
 
     for (const page of pages) {
@@ -765,6 +1158,41 @@ try {
       });
       if (!hasAskLabel) {
         fail(page, 'missing link to /ask labelled "Ask"');
+      }
+
+      const coverLinks = [...body.matchAll(/<a\b[^>]*\bhref=["']\/cover-letter\/?["'][^>]*>([\s\S]*?)<\/a>/gi)];
+      const hasCoverLabel = coverLinks.some((m) => {
+        const text = decodeHtmlEntities(m[1].replace(/<[^>]+>/g, '')).trim();
+        return text === 'Cover Letter';
+      });
+      if (!hasCoverLabel) {
+        fail(page, 'missing link to /cover-letter labelled "Cover Letter"');
+      }
+
+      // Order check on the single <nav> block (main navigation):
+      // href="/case-studies" < href="/cover-letter" < href="/ask"
+      const mainNavMatch =
+        body.match(/<nav\b[^>]*\baria-label=["']Main navigation["'][^>]*>([\s\S]*?)<\/nav>/i) ||
+        body.match(/<nav\b[^>]*\bclass=["'][^"']*site-nav[^"']*["'][^>]*>([\s\S]*?)<\/nav>/i) ||
+        body.match(/<nav\b[^>]*>([\s\S]*?)<\/nav>/i);
+      if (!mainNavMatch) {
+        fail(page, 'missing main <nav> block');
+      } else {
+        const mainNavHtml = mainNavMatch[1];
+        const idxCaseStudies = mainNavHtml.indexOf('href="/case-studies"');
+        const idxCoverLetter = mainNavHtml.indexOf('href="/cover-letter"');
+        const idxAsk = mainNavHtml.indexOf('href="/ask"');
+        if (idxCaseStudies === -1 || idxCoverLetter === -1 || idxAsk === -1) {
+          fail(
+            page,
+            `nav links missing: case-studies=${idxCaseStudies}, cover-letter=${idxCoverLetter}, ask=${idxAsk}`
+          );
+        } else if (!(idxCaseStudies < idxCoverLetter && idxCoverLetter < idxAsk)) {
+          fail(
+            page,
+            `nav order invalid (expected /case-studies < /cover-letter < /ask): case-studies=${idxCaseStudies}, cover-letter=${idxCoverLetter}, ask=${idxAsk}`
+          );
+        }
       }
 
       if (/href=["']\/admin\b/i.test(body)) {

@@ -137,7 +137,7 @@ describe('db.mjs', () => {
     db.close();
   });
 
-  test('fresh DB: PRAGMA user_version is 2, all tables and indexes exist', async () => {
+  test('fresh DB: PRAGMA user_version is 3, all tables and indexes exist', async () => {
     const db = await freshDb();
     assert.equal(db.countMessages(), 0);
     db.close();
@@ -145,7 +145,7 @@ describe('db.mjs', () => {
     const rawDb = new DatabaseSync(join(tempDir, 'site.sqlite'));
     try {
       const { user_version: version } = rawDb.prepare('PRAGMA user_version').get();
-      assert.equal(version, 2);
+      assert.equal(version, 3);
 
       const tables = rawDb
         .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
@@ -156,6 +156,7 @@ describe('db.mjs', () => {
         'ask_daily_counters',
         'ask_questions',
         'contact_messages',
+        'daily_cap_events',
         'settings',
       ]);
 
@@ -173,7 +174,7 @@ describe('db.mjs', () => {
     }
   });
 
-  test('version-1 DB: upgraded to version 2, row survives, tables exist', async () => {
+  test('version-1 DB: upgraded to version 3, row survives, tables exist', async () => {
     // Before touching db module, create site.sqlite at version 1
     const rawDb1 = new DatabaseSync(join(tempDir, 'site.sqlite'));
     rawDb1.exec(`
@@ -205,7 +206,7 @@ describe('db.mjs', () => {
     const rawDb2 = new DatabaseSync(join(tempDir, 'site.sqlite'));
     try {
       const { user_version: version } = rawDb2.prepare('PRAGMA user_version').get();
-      assert.equal(version, 2);
+      assert.equal(version, 3);
 
       const tables = rawDb2
         .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
@@ -216,6 +217,95 @@ describe('db.mjs', () => {
       assert.ok(tables.includes('admin_sessions'));
       assert.ok(tables.includes('ask_questions'));
       assert.ok(tables.includes('ask_daily_counters'));
+      assert.ok(tables.includes('daily_cap_events'));
+    } finally {
+      rawDb2.close();
+    }
+  });
+
+  test('version-2 DB: upgraded to version 3, rows survive, daily_cap_events exists', async () => {
+    // Hand-built version-2 database (version-2 DDL + PRAGMA user_version=2)
+    const rawDb1 = new DatabaseSync(join(tempDir, 'site.sqlite'));
+    rawDb1.exec(`
+      CREATE TABLE IF NOT EXISTS contact_messages (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        name            TEXT    NOT NULL,
+        email           TEXT    NOT NULL,
+        message         TEXT    NOT NULL,
+        delivery_status TEXT    NOT NULL CHECK (delivery_status IN ('sent','failed')),
+        delivery_error  TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_contact_messages_created_at
+        ON contact_messages (created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS settings (
+        key        TEXT PRIMARY KEY,
+        value      TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS admin_sessions (
+        id         TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        expires_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires_at
+        ON admin_sessions (expires_at);
+
+      CREATE TABLE IF NOT EXISTS ask_questions (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        question   TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_ask_questions_created_at
+        ON ask_questions (created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS ask_daily_counters (
+        day        TEXT PRIMARY KEY,
+        count      INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      );
+
+      PRAGMA user_version = 2;
+    `);
+
+    rawDb1.prepare(`
+      INSERT INTO contact_messages (name, email, message, delivery_status)
+      VALUES ('V2 User', 'v2@example.com', 'Existing v2 message', 'sent')
+    `).run();
+    rawDb1.prepare(`
+      INSERT INTO settings (key, value) VALUES ('site_theme', 'nord')
+    `).run();
+    rawDb1.prepare(`
+      INSERT INTO ask_questions (question) VALUES ('Existing v2 question')
+    `).run();
+    rawDb1.prepare(`
+      INSERT INTO ask_daily_counters (day, count) VALUES ('2026-11-09', 1)
+    `).run();
+    rawDb1.close();
+
+    // Open through the module
+    const db = await freshDb();
+    assert.equal(db.countMessages(), 1);
+    assert.equal(db.getSetting('site_theme'), 'nord');
+    assert.equal(db.countQuestions(), 1);
+    const counterRes = db.consumeDailyAsk('2026-11-09', 10);
+    assert.equal(counterRes.count, 2);
+    assert.equal(counterRes.allowed, true);
+    db.close();
+
+    // Inspect raw state
+    const rawDb2 = new DatabaseSync(join(tempDir, 'site.sqlite'));
+    try {
+      const { user_version: version } = rawDb2.prepare('PRAGMA user_version').get();
+      assert.equal(version, 3);
+
+      const tables = rawDb2
+        .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+        .all()
+        .map((r) => r.name);
+      assert.ok(tables.includes('daily_cap_events'));
     } finally {
       rawDb2.close();
     }
@@ -243,7 +333,7 @@ describe('db.mjs', () => {
     const rawDb = new DatabaseSync(join(tempDir, 'site.sqlite'));
     try {
       const { user_version: version } = rawDb.prepare('PRAGMA user_version').get();
-      assert.equal(version, 2);
+      assert.equal(version, 3);
     } finally {
       rawDb.close();
     }
@@ -352,6 +442,57 @@ describe('db.mjs', () => {
     assert.equal(db.countQuestions(), 2);
   });
 
+  test('daily_cap_events: insertCapEvent, getCapEvent, countCapEvents, and CHECK constraint', async () => {
+    const db = await freshDb();
+    const day = '2026-11-09';
+
+    assert.equal(db.countCapEvents(), 0);
+    assert.equal(db.getCapEvent(day, 'cover_letter'), null);
+
+    // insertCapEvent(day,'cover_letter') twice and insertCapEvent(day,'ask') once -> countCapEvents() === 2
+    db.insertCapEvent(day, 'cover_letter');
+    db.insertCapEvent(day, 'cover_letter');
+    db.insertCapEvent(day, 'ask');
+    assert.equal(db.countCapEvents(), 2);
+
+    // getCapEvent returns { day, feature, created_at } with non-empty created_at for both
+    const clEvent = db.getCapEvent(day, 'cover_letter');
+    assert.ok(clEvent);
+    assert.equal(clEvent.day, day);
+    assert.equal(clEvent.feature, 'cover_letter');
+    assert.ok(typeof clEvent.created_at === 'string' && clEvent.created_at.length > 0);
+
+    const askEvent = db.getCapEvent(day, 'ask');
+    assert.ok(askEvent);
+    assert.equal(askEvent.day, day);
+    assert.equal(askEvent.feature, 'ask');
+    assert.ok(typeof askEvent.created_at === 'string' && askEvent.created_at.length > 0);
+
+    // a different day adds another row
+    const otherDay = '2026-11-10';
+    db.insertCapEvent(otherDay, 'cover_letter');
+    assert.equal(db.countCapEvents(), 3);
+    const otherClEvent = db.getCapEvent(otherDay, 'cover_letter');
+    assert.ok(otherClEvent);
+    assert.equal(otherClEvent.day, otherDay);
+    assert.equal(otherClEvent.feature, 'cover_letter');
+
+    // inserting feature 'other' throws (CHECK constraint)
+    assert.doesNotThrow(() => {
+      db.insertCapEvent(day, 'other');
+    });
+    assert.equal(db.countCapEvents(), 3);
+
+    const rawDb = new DatabaseSync(join(tempDir, 'site.sqlite'));
+    try {
+      assert.throws(() => {
+        rawDb.prepare("INSERT INTO daily_cap_events (day, feature) VALUES (?, ?)").run('2026-11-11', 'other');
+      });
+    } finally {
+      rawDb.close();
+    }
+  });
+
   test('all accessors throw when database is unavailable', async () => {
     process.env.DATA_DIR = '/dev/null/not-a-dir';
     const { reset: resetEnv } = await import('../src/lib/env.mjs');
@@ -373,6 +514,9 @@ describe('db.mjs', () => {
     assert.throws(() => db.insertQuestion('q'), expectedErr);
     assert.throws(() => db.countQuestions(), expectedErr);
     assert.throws(() => db.consumeDailyAsk('2026-11-09', 10), expectedErr);
+    assert.throws(() => db.insertCapEvent('2026-11-09', 'ask'), expectedErr);
+    assert.throws(() => db.getCapEvent('2026-11-09', 'ask'), expectedErr);
+    assert.throws(() => db.countCapEvents(), expectedErr);
 
     // Restore DATA_DIR for afterEach
     process.env.DATA_DIR = tempDir;

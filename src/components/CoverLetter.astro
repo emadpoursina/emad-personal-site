@@ -1,0 +1,95 @@
+---
+/**
+ * src/components/CoverLetter.astro
+ *
+ * Semantic cover letter component rendering the general cover letter.
+ */
+
+import { buildGeneralLetter, loadCoverLetter } from '../lib/cover-letter.mjs';
+
+const letterDoc = loadCoverLetter();
+const built = buildGeneralLetter(letterDoc).trimEnd();
+
+const blocks = built.split('\n\n');
+const greeting = blocks[0];
+const authorization = blocks[blocks.length - 3];
+const signoff = blocks[blocks.length - 2];
+const paragraphs = blocks.slice(1, blocks.length - 3);
+const linkLines = blocks[blocks.length - 1].split('\n');
+
+const links = linkLines.map((line) => {
+  const index = line.indexOf(': ');
+  return {
+    label: line.slice(0, index),
+    href: line.slice(index + 2),
+  };
+});
+---
+
+<article class="cover-letter" aria-label="General cover letter">
+  <p class="letter-greeting">{greeting}</p>
+  {
+    paragraphs.map((paragraph) => (
+      <p class="letter-paragraph">{paragraph}</p>
+    ))
+  }
+  <p class="letter-authorization">{authorization}</p>
+  <p class="letter-signoff">{signoff}</p>
+  <ul class="letter-links">
+    {
+      links.map(({ label, href }) => (
+        <li>
+          <a href={href}>{label}</a>
+        </li>
+      ))
+    }
+  </ul>
+</article>
+
+<style>
+  .cover-letter {
+    line-height: 1.6;
+    color: var(--fg);
+  }
+
+  .letter-greeting {
+    font-weight: 600;
+    color: var(--fg-heading);
+    margin-bottom: 1rem;
+  }
+
+  .letter-paragraph {
+    margin-bottom: 1rem;
+  }
+
+  .letter-authorization {
+    font-style: italic;
+    color: var(--fg);
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .letter-signoff {
+    font-weight: 500;
+    color: var(--fg-heading);
+    margin-bottom: 1rem;
+  }
+
+  .letter-links {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .letter-links a {
+    color: var(--fg-link);
+    text-decoration: underline;
+  }
+
+  .letter-links a:hover {
+    color: var(--fg-link-hover);
+  }
+</style>

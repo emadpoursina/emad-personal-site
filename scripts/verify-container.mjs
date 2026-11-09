@@ -121,6 +121,7 @@ async function run() {
   let secretsNone = false;
   let aboutStatus = 0;
   let caseStudiesStatus = 0;
+  let coverLetterStatus = 0;
   let askStatus = 0;
   let llmsStatus = 0;
   let resumeStatus = 0;
@@ -307,6 +308,21 @@ async function run() {
     routesPassed++;
 
     caseStudiesStatus = await probe('/case-studies', { expectedStatus: 200, expectedContentTypePrefix: 'text/html' });
+    routesPassed++;
+
+    coverLetterStatus = await probe('/cover-letter', {
+      expectedStatus: 200,
+      expectedContentTypePrefix: 'text/html',
+      validateBody: (body) => {
+        if (!body.includes('Requires employer-sponsored work authorization.')) {
+          return 'expected body to contain the exact authorization line';
+        }
+        if (!body.includes('Best regards, Emad Poursina')) {
+          return 'expected body to contain the exact sign-off';
+        }
+        return null;
+      },
+    });
     routesPassed++;
 
     askStatus = await probe('/ask', { expectedStatus: 200, expectedContentTypePrefix: 'text/html' });
@@ -596,6 +612,7 @@ async function run() {
     secretsNone &&
     aboutStatus === 200 &&
     caseStudiesStatus === 200 &&
+    coverLetterStatus === 200 &&
     askStatus === 200 &&
     llmsStatus === 200 &&
     resumeStatus === 200 &&
@@ -605,15 +622,15 @@ async function run() {
     adminLoginStatus === 200 &&
     askPostStatus === 503 &&
     adminLoginPostStatus === 401 &&
-    routesPassed === 11
+    routesPassed === 12
   ) {
     console.log(
       `healthz=${healthzStatus} rows_before=${rowsBefore} rows_after_rebuild=${rowsAfter} ` +
       `disabled=${disabledStatus} warning=present secrets=none ` +
-      `about=${aboutStatus} case_studies=${caseStudiesStatus} ask=${askStatus} llms=${llmsStatus} ` +
+      `about=${aboutStatus} case_studies=${caseStudiesStatus} cover_letter=${coverLetterStatus} ask=${askStatus} llms=${llmsStatus} ` +
       `resume=${resumeStatus} api_profile=${apiProfileStatus} voicedash=${voicedashStatus} ` +
       `admin=${adminStatus} admin_login=${adminLoginStatus} ask_post=${askPostStatus} admin_login_post=${adminLoginPostStatus} ` +
-      `routes=${routesPassed}/11`
+      `routes=${routesPassed}/12`
     );
     process.exit(0);
   } else {

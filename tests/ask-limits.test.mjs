@@ -163,11 +163,18 @@ describe('consumeDaily', () => {
   test('cap boundary and atomic delegation: returns unchanged object and passes (day, cap) to db', () => {
     const recordedCalls = [];
     let count = 0;
+    const events = new Map();
     const stubDb = {
       consumeDailyAsk(day, cap) {
         recordedCalls.push({ day, cap });
         count += 1;
         return { count, allowed: count <= cap };
+      },
+      getCapEvent(day, feature) {
+        return events.get(`${day}:${feature}`) || null;
+      },
+      insertCapEvent(day, feature) {
+        events.set(`${day}:${feature}`, { day, feature });
       },
     };
 
@@ -201,6 +208,10 @@ describe('consumeDaily', () => {
       consumeDailyAsk() {
         throw new Error('SQLite disk I/O error');
       },
+      getCapEvent() {
+        return null;
+      },
+      insertCapEvent() {},
     };
 
     assert.throws(
@@ -234,9 +245,16 @@ describe('logging and privacy', () => {
       assert.equal(captured.length, 1, 'One warning logged when rate limited');
 
       // 2. Trigger daily-cap block
+      const events = new Map();
       const capDb = {
         consumeDailyAsk(day, cap) {
           return { count: 11, allowed: false };
+        },
+        getCapEvent(day, feature) {
+          return events.get(`${day}:${feature}`) || null;
+        },
+        insertCapEvent(day, feature) {
+          events.set(`${day}:${feature}`, { day, feature });
         },
       };
       const capRes = consumeDaily(capDb, testDay, 10);
@@ -259,8 +277,72 @@ describe('logging and privacy', () => {
     // Verify daily-cap log entry
     const capRaw = captured[1];
     const capPayload = JSON.parse(capRaw);
-    assert.deepEqual(capPayload, { event: 'ask_daily_cap', day: testDay });
+    assert.deepEqual(capPayload, { event: 'daily_cap', day: testDay, feature: 'ask' });
     assert.equal(capRaw.includes(clientKey), false, 'Must not include client IP/key');
     assert.equal(capRaw.includes(questionText), false, 'Must not include question text');
+  });
+
+  test('several over-cap calls produce exactly one insertCapEvent call and one daily_cap line, and a new UTC day key writes no event', () => {
+    let insertCalls = 0;
+    const events = new Map();
+    const fakeDb = {
+      consumeDailyAsk(day, cap) {
+        return { count: 11, allowed: false };
+      },
+      getCapEvent(day, feature) {
+        return events.get(`${day}:${feature}`) || null;
+      },
+      insertCapEvent(day, feature) {
+        insertCalls += 1;
+        events.set(`${day}:${feature}`, { day, feature });
+      },
+    };
+
+    /** @type {string[]} */
+    const captured = [];
+    const origWarn = console.warn;
+    console.warn = (msg) => {
+      captured.push(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    };
+
+    try {
+      const day = '2026-11-09';
+      // First over-cap call
+      const res1 = consumeDaily(fakeDb, day, 10);
+      assert.equal(res1.allowed, false);
+      assert.equal(insertCalls, 1);
+      assert.equal(captured.length, 1);
+      assert.deepEqual(JSON.parse(captured[0]), { event: 'daily_cap', day, feature: 'ask' });
+
+      // Repeated over-cap calls on same day
+      const res2 = consumeDaily(fakeDb, day, 10);
+      assert.equal(res2.allowed, false);
+      const res3 = consumeDaily(fakeDb, day, 10);
+      assert.equal(res3.allowed, false);
+
+      assert.equal(insertCalls, 1, 'Must have exactly one insertCapEvent call');
+      assert.equal(captured.length, 1, 'Must have exactly one daily_cap warning line');
+
+      // A new UTC day key with an allowed call writes no event
+      const nextDayDb = {
+        consumeDailyAsk(d, cap) {
+          return { count: 1, allowed: true };
+        },
+        getCapEvent(d, feature) {
+          return events.get(`${d}:${feature}`) || null;
+        },
+        insertCapEvent(d, feature) {
+          insertCalls += 1;
+          events.set(`${d}:${feature}`, { day: d, feature });
+        },
+      };
+
+      const nextDayRes = consumeDaily(nextDayDb, '2026-11-10', 10);
+      assert.equal(nextDayRes.allowed, true);
+      assert.equal(insertCalls, 1, 'Allowed call on new day must not insert cap event');
+      assert.equal(captured.length, 1, 'Allowed call on new day must not log warning');
+    } finally {
+      console.warn = origWarn;
+    }
   });
 });
