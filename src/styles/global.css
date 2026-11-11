@@ -33,17 +33,18 @@ body {
     "Helvetica Neue",
     sans-serif;
   font-size: 1rem;
-  line-height: 1.6;
+  /* Golden-ratio line height for body copy */
+  line-height: var(--golden-line);
   color: var(--fg);
   background-color: var(--bg);
 }
 
-/* Max line length for readability */
+/* Max line length for readability: 61.8 characters, the golden measure */
 p,
 li,
 blockquote,
 dd {
-  max-width: 70ch;
+  max-width: 61.8ch;
 }
 
 /* Headings */
@@ -100,12 +101,12 @@ header {
 }
 
 main {
-  padding: 2rem 0;
+  padding: var(--space-lg) 0;
   min-height: 60vh;
 }
 
 footer {
-  padding: 1.5rem 0;
+  padding: var(--space-md) 0;
   background-color: var(--bg-muted);
   color: var(--fg-footer);
   font-size: 0.875rem;

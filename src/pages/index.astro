@@ -22,11 +22,11 @@ const profile = loadProfile();
     <link rel="preload" as="image" href="/images/emad-poursina.jpg" fetchpriority="high" />
   </Fragment>
 
-  <div class="home-container">
-    <section class="hero-section" aria-labelledby="headline">
+  <section class="hero-section" aria-labelledby="brand-name">
+    <div class="hero-inner">
       <div class="hero-copy">
-        <h1 id="headline" class="headline">{profile.headline}</h1>
-        <p class="author-name">{profile.name}</p>
+        <h1 id="brand-name" class="brand-name">{profile.name}</h1>
+        <p class="headline">{profile.headline}</p>
 
         <div class="key-facts">
           <p class="work-auth">{profile.workAuthorization}</p>
@@ -34,9 +34,12 @@ const profile = loadProfile();
         </div>
 
         <nav class="primary-links" aria-label="Primary actions">
-          <a href="/case-studies" class="btn btn-primary">Case Studies</a>
-          <a href="/cv.pdf" class="btn btn-secondary">CV</a>
-          <a href="/contact" class="btn btn-secondary">Contact</a>
+          <a
+            href="https://t.me/emadpoursina"
+            class="btn-hero"
+            target="_blank"
+            rel="noopener noreferrer">Request Service</a
+          >
         </nav>
       </div>
 
@@ -51,8 +54,10 @@ const profile = loadProfile();
           decoding="async"
         />
       </div>
-    </section>
+    </div>
+  </section>
 
+  <div class="home-container">
     <section class="content-section" aria-labelledby="about-heading">
       <h2 id="about-heading">About</h2>
       <p class="bio-text">{profile.bio}</p>
@@ -80,24 +85,48 @@ const profile = loadProfile();
 
 <style>
   .home-container {
-    max-width: 800px;
+    max-width: var(--content-width);
     margin: 0 auto;
     padding: 0 1rem;
   }
 
   .hero-section {
     position: relative;
+    /* Cancel <main> top padding so the banner sits flush under the header */
+    margin-top: calc(-1 * var(--space-lg));
+    margin-bottom: var(--space-lg);
+    color: var(--hero-fg);
+    background-color: var(--hero-bg);
+    background-image:
+      linear-gradient(
+        135deg,
+        rgba(18, 40, 30, 0.95) 0%,
+        rgba(18, 40, 30, 0.86) 55%,
+        rgba(18, 40, 30, 0.62) 100%
+      ),
+      radial-gradient(circle at 82% 45%, rgba(121, 185, 154, 0.28), transparent 55%),
+      url("/images/hero-code.svg");
+    background-size:
+      auto,
+      auto,
+      320px 320px;
+    background-position:
+      center,
+      center,
+      left top;
+    background-repeat: no-repeat, no-repeat, repeat;
+  }
+
+  .hero-inner {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    min-height: 24rem;
+    padding: 3.236rem 1rem;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 250px;
+    /* Golden split: copy : portrait = phi^2 : 1 */
+    grid-template-columns: minmax(0, 1.618fr) minmax(0, 0.618fr);
     align-items: center;
-    gap: 2rem;
-    padding: 2.25rem 2rem;
-    margin-bottom: 2.5rem;
-    border-radius: 14px;
-    overflow: hidden;
-    background-color: var(--bg-muted);
-    background-image: url("/images/hero-code.svg");
-    background-size: 320px 320px;
+    gap: var(--space-lg);
   }
 
   .hero-copy {
@@ -106,118 +135,126 @@ const profile = loadProfile();
 
   .hero-portrait {
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
+    align-items: center;
   }
 
   .hero-portrait img {
     display: block;
-    width: 240px;
-    height: 240px;
+    width: 100%;
+    height: auto;
+    /* Portrait module: 15.618rem (~250px) on the banner */
+    max-width: 15.618rem;
+    aspect-ratio: 1;
     object-fit: cover;
     object-position: 50% 22%;
-    border: 5px solid var(--bg);
+    border: 0.236rem solid rgba(220, 235, 224, 0.85);
     border-radius: 50%;
-    box-shadow:
-      0 0 0 3px var(--fg-link),
-      0 18px 32px rgba(18, 40, 30, 0.18);
+    box-shadow: 0 1.618rem 2.618rem rgba(0, 0, 0, 0.35);
+  }
+
+  .brand-name {
+    /* Display headline on the banner, reference-scale */
+    font-size: clamp(2.618rem, 1.618rem + 2.8vw, 3.618rem);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    color: var(--hero-fg-strong);
+    margin-top: 0;
+    margin-bottom: var(--space-sm);
   }
 
   .headline {
-    font-size: 2rem;
-    font-weight: 700;
-    line-height: 1.25;
-    color: var(--fg-heading);
+    font-size: 1.125rem;
+    font-weight: 400;
+    line-height: var(--golden-line);
+    color: var(--hero-fg);
     margin-top: 0;
-    margin-bottom: 0.75rem;
-  }
-
-  .author-name {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--fg-muted);
-    margin-top: 0;
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--space-md);
+    max-width: 54ch;
   }
 
   .key-facts {
-    background-color: var(--bg);
-    padding: 1rem 1.25rem;
-    border-radius: 6px;
-    margin-bottom: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.382rem var(--space-md);
+    background-color: transparent;
+    padding: 0;
+    margin-top: 0;
+    margin-bottom: var(--space-md);
   }
 
   .key-facts p {
-    margin: 0.25rem 0;
+    margin: 0;
   }
 
   .work-auth {
     font-weight: 600;
-    color: var(--fg);
+    color: var(--hero-fg);
   }
 
   .availability {
-    color: var(--fg-muted);
+    color: var(--hero-fg-muted);
   }
 
   .availability span {
-    color: var(--fg);
+    color: var(--hero-fg);
     font-weight: 500;
   }
 
   .primary-links {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
+    gap: var(--space-sm);
+    margin-top: 0;
   }
 
-  .btn {
+  .btn-hero {
     display: inline-block;
-    padding: 0.625rem 1.25rem;
+    padding: 0.809rem 1.618rem;
+    border: 1px solid var(--hero-btn-bg);
+    border-radius: 0.146rem;
+    background-color: var(--hero-btn-bg);
+    color: var(--hero-btn-fg);
+    font-size: 0.9375rem;
     font-weight: 600;
-    font-size: 1rem;
+    line-height: 1.236;
     text-decoration: none;
-    border-radius: 4px;
     text-align: center;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease;
   }
 
-  .btn-primary {
-    background-color: var(--bg-btn);
-    color: var(--fg-btn);
+  .btn-hero:hover {
+    background-color: var(--hero-btn-bg-hover);
+    border-color: var(--hero-btn-bg-hover);
+    color: var(--hero-btn-fg-hover);
+    text-decoration: none;
   }
 
-  .btn-primary:hover {
-    background-color: var(--bg-btn-hover);
-    color: var(--fg-btn-hover);
-  }
-
-  .btn-secondary {
-    background-color: transparent;
-    color: var(--fg-link);
-    border: 1px solid var(--fg-link);
-  }
-
-  .btn-secondary:hover {
-    background-color: var(--bg-muted);
-    color: var(--fg-link-hover);
-    border-color: var(--fg-link-hover);
+  .hero-section :focus-visible {
+    outline: 2px solid var(--hero-fg-strong);
+    outline-offset: 3px;
   }
 
   .content-section {
-    margin-bottom: 2.5rem;
+    margin-bottom: var(--space-lg);
   }
 
   .content-section h2 {
-    font-size: 1.5rem;
+    font-size: var(--text-h2);
     margin-top: 0;
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-sm);
     border-bottom: 1px solid var(--bg-muted);
-    padding-bottom: 0.5rem;
+    padding-bottom: var(--space-xs);
   }
 
   .bio-text {
-    font-size: 1.0625rem;
-    line-height: 1.7;
+    font-size: var(--text-body);
+    line-height: var(--golden-line);
     color: var(--fg);
   }
 
@@ -227,35 +264,52 @@ const profile = loadProfile();
     margin: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--space-xs);
   }
 
   .tag-list li {
     background-color: var(--bg-muted);
     color: var(--fg);
-    padding: 0.375rem 0.75rem;
-    border-radius: 4px;
-    font-size: 0.9375rem;
+    padding: var(--space-2xs) var(--space-xs);
+    border-radius: var(--space-2xs);
+    font-size: var(--text-body);
+  }
+
+  @media (max-width: 900px) {
+    .hero-inner {
+      min-height: 21rem;
+      padding: 2.618rem 1rem;
+      gap: var(--space-md);
+    }
+
+    .hero-portrait img {
+      max-width: 12.236rem;
+    }
   }
 
   @media (max-width: 767px) {
-    .hero-section {
+    .hero-inner {
       grid-template-columns: 1fr;
-      gap: 1.5rem;
-      padding: 1.5rem 1.25rem;
+      min-height: 0;
+      padding: 2rem 1rem;
+      gap: var(--space-md);
     }
 
     .hero-portrait {
       order: -1;
+      justify-content: flex-start;
     }
 
     .hero-portrait img {
-      width: 180px;
-      height: 180px;
+      max-width: 9rem;
     }
 
     .headline {
-      font-size: 1.75rem;
+      font-size: 1rem;
+    }
+
+    .brand-name {
+      font-size: 2.618rem;
     }
   }
 </style>

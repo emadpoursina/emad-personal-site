@@ -34,8 +34,42 @@
   --fg-btn-hover: #ffffff;
   --bg-btn-hover: #1f4534;
 
+  /* Header nav buttons: Hunter Green / Muted Teal shades darkened 10% */
+  --nav-fg:              #1f4534;
+  --nav-bg:              #a3c0ad;
+  --nav-border:          #294f3f;
+  --nav-fg-hover:        #12281e;
+  --nav-bg-hover:        #93b19e;
+  --nav-border-hover:    #1f4534;
+  --nav-fg-active:       #ffffff;
+  --nav-bg-active:       #294f3f;
+  --nav-border-active:   #294f3f;
+  --nav-fg-active-hover: #ffffff;
+  --nav-bg-active-hover: #1f4534;
+  --nav-border-active-hover: #1f4534;
+
   /* Focus */
   --focus-ring:  #2e5d46; /* Hunter Green */
+
+  /* Dark banner (header bar + hero band): deep Hunter Green, light type */
+  --header-bg:            #12281e;
+  --header-border:        #2e5d46;
+  --header-fg:            #dcebe0; /* Honeydew */
+  --header-fg-strong:     #f2f9f4;
+  --header-fg-hover:      #ffffff;
+  --header-cta-fg:        #dcebe0;
+  --header-cta-border:    #79b99a; /* Muted Teal */
+  --header-cta-bg-hover:  #2e5d46; /* Hunter Green */
+  --header-cta-fg-hover:  #ffffff;
+
+  --hero-bg:        #12281e;
+  --hero-fg:        #dcebe0;
+  --hero-fg-strong: #f2f9f4;
+  --hero-fg-muted:  #b5d5c0; /* Celadon */
+  --hero-btn-bg:    #dcebe0;
+  --hero-btn-fg:    #12281e;
+  --hero-btn-bg-hover: #b5d5c0;
+  --hero-btn-fg-hover: #12281e;
 
   /* Status / feedback */
   --color-error:   #a32222;
@@ -49,9 +83,23 @@
   --pair-link:        --fg-link on --bg;
   --pair-link-hover:  --fg-link-hover on --bg;
   --pair-btn:         --fg-btn on --bg-btn;
+  --pair-nav:         --nav-fg on --nav-bg;
+  --pair-nav-hover:   --nav-fg-hover on --nav-bg-hover;
+  --pair-nav-active:  --nav-fg-active on --nav-bg-active;
+  --pair-nav-active-hover: --nav-fg-active-hover on --nav-bg-active-hover;
   --pair-form-label:  --fg on --bg-form;
   --pair-error:       --color-error on --bg-form;
   --pair-success:     --color-success on --bg-form;
+  --pair-header:          --header-fg on --header-bg;
+  --pair-header-heading:  --header-fg-strong on --header-bg;
+  --pair-header-hover:    --header-fg-hover on --header-bg;
+  --pair-header-cta:      --header-cta-fg on --header-bg;
+  --pair-header-cta-hover: --header-cta-fg-hover on --header-cta-bg-hover;
+  --pair-hero:            --hero-fg on --hero-bg;
+  --pair-hero-heading:    --hero-fg-strong on --hero-bg;
+  --pair-hero-muted:      --hero-fg-muted on --hero-bg;
+  --pair-hero-btn:        --hero-btn-fg on --hero-btn-bg;
+  --pair-hero-btn-hover:  --hero-btn-fg-hover on --hero-btn-bg-hover;
 }
 
 /* ---- Dark theme ---- */
@@ -75,8 +123,42 @@
   --fg-btn-hover: #12281e;
   --bg-btn-hover: #b5d5c0; /* Celadon */
 
+  /* Header nav buttons: Muted Teal shades darkened 10% */
+  --nav-fg:              #dcebe0;
+  --nav-bg:              #183427;
+  --nav-border:          #81b797;
+  --nav-fg-hover:        #f2f9f4;
+  --nav-bg-hover:        #162f23;
+  --nav-border-hover:    #a3c0ad;
+  --nav-fg-active:       #12281e;
+  --nav-bg-active:       #6da68b;
+  --nav-border-active:   #6da68b;
+  --nav-fg-active-hover: #12281e;
+  --nav-bg-active-hover: #79b99a;
+  --nav-border-active-hover: #79b99a;
+
   /* Focus */
   --focus-ring:  #b5d5c0; /* Celadon */
+
+  /* Dark banner (header bar + hero band) */
+  --header-bg:            #0b1a13;
+  --header-border:        #2e5d46;
+  --header-fg:            #dcebe0;
+  --header-fg-strong:     #f2f9f4;
+  --header-fg-hover:      #ffffff;
+  --header-cta-fg:        #dcebe0;
+  --header-cta-border:    #79b99a;
+  --header-cta-bg-hover:  #2e5d46;
+  --header-cta-fg-hover:  #ffffff;
+
+  --hero-bg:        #0b1a13;
+  --hero-fg:        #dcebe0;
+  --hero-fg-strong: #f2f9f4;
+  --hero-fg-muted:  #b5d5c0;
+  --hero-btn-bg:    #dcebe0;
+  --hero-btn-fg:    #12281e;
+  --hero-btn-bg-hover: #b5d5c0;
+  --hero-btn-fg-hover: #12281e;
 
   /* Status / feedback */
   --color-error:   #f2a7a7;
@@ -90,9 +172,23 @@
   --pair-link:        --fg-link on --bg;
   --pair-link-hover:  --fg-link-hover on --bg;
   --pair-btn:         --fg-btn on --bg-btn;
+  --pair-nav:         --nav-fg on --nav-bg;
+  --pair-nav-hover:   --nav-fg-hover on --nav-bg-hover;
+  --pair-nav-active:  --nav-fg-active on --nav-bg-active;
+  --pair-nav-active-hover: --nav-fg-active-hover on --nav-bg-active-hover;
   --pair-form-label:  --fg on --bg-form;
   --pair-error:       --color-error on --bg-form;
   --pair-success:     --color-success on --bg-form;
+  --pair-header:          --header-fg on --header-bg;
+  --pair-header-heading:  --header-fg-strong on --header-bg;
+  --pair-header-hover:    --header-fg-hover on --header-bg;
+  --pair-header-cta:      --header-cta-fg on --header-bg;
+  --pair-header-cta-hover: --header-cta-fg-hover on --header-cta-bg-hover;
+  --pair-hero:            --hero-fg on --hero-bg;
+  --pair-hero-heading:    --hero-fg-strong on --hero-bg;
+  --pair-hero-muted:      --hero-fg-muted on --hero-bg;
+  --pair-hero-btn:        --hero-btn-fg on --hero-btn-bg;
+  --pair-hero-btn-hover:  --hero-btn-fg-hover on --hero-btn-bg-hover;
 }
 
 /* ---- :root defaults to light values ---- */
@@ -116,10 +212,75 @@
   --fg-btn-hover: #ffffff;
   --bg-btn-hover: #1f4534;
 
+  /* Header nav buttons: Hunter Green / Muted Teal shades darkened 10% */
+  --nav-fg:              #1f4534;
+  --nav-bg:              #a3c0ad;
+  --nav-border:          #294f3f;
+  --nav-fg-hover:        #12281e;
+  --nav-bg-hover:        #93b19e;
+  --nav-border-hover:    #1f4534;
+  --nav-fg-active:       #ffffff;
+  --nav-bg-active:       #294f3f;
+  --nav-border-active:   #294f3f;
+  --nav-fg-active-hover: #ffffff;
+  --nav-bg-active-hover: #1f4534;
+  --nav-border-active-hover: #1f4534;
+
   /* Focus */
   --focus-ring:  #2e5d46;
 
   /* Status / feedback */
   --color-error:   #a32222;
   --color-success: #1f6b3f;
+
+  /* Dark banner (header bar + hero band): deep Hunter Green, light type */
+  --header-bg:            #12281e;
+  --header-border:        #2e5d46;
+  --header-fg:            #dcebe0;
+  --header-fg-strong:     #f2f9f4;
+  --header-fg-hover:      #ffffff;
+  --header-cta-fg:        #dcebe0;
+  --header-cta-border:    #79b99a;
+  --header-cta-bg-hover:  #2e5d46;
+  --header-cta-fg-hover:  #ffffff;
+
+  --hero-bg:        #12281e;
+  --hero-fg:        #dcebe0;
+  --hero-fg-strong: #f2f9f4;
+  --hero-fg-muted:  #b5d5c0;
+  --hero-btn-bg:    #dcebe0;
+  --hero-btn-fg:    #12281e;
+  --hero-btn-bg-hover: #b5d5c0;
+  --hero-btn-fg-hover: #12281e;
+}
+
+/*
+ * ---- Golden-ratio scale (phi = 1.618) ----
+ *
+ * One ratio drives the shared proportions of the site: spacing steps are
+ * powers of phi, the page measure is 61.8rem, body line-height is 1.618,
+ * and the heading scale steps 1rem -> 1.618rem -> 2.618rem.
+ * Header height (4.236rem = phi^3) and the hero column split (1.618fr : 1fr)
+ * resolve to the same ratio, so the layout stays proportional at every size.
+ */
+:root {
+  --phi: 1.618;
+
+  /* Page measure: 61.8 x 16px ~= 989px */
+  --content-width: 61.8rem;
+  --golden-line: 1.618;
+
+  /* Spacing: phi^-2 .. phi^3 */
+  --space-2xs: 0.382rem;
+  --space-xs:  0.618rem;
+  --space-sm:  1rem;
+  --space-md:  1.618rem;
+  --space-lg:  2.618rem;
+  --space-xl:  4.236rem;
+
+  /* Type scale: phi^0, phi^1, phi^2 */
+  --text-body: 1rem;
+  --text-lead: 1.618rem;
+  --text-h2:   1.618rem;
+  --text-h1:   2.618rem;
 }
