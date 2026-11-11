@@ -25,6 +25,7 @@ const profile = loadProfile();
   <section class="hero-section" aria-labelledby="brand-name">
     <div class="hero-inner">
       <div class="hero-copy">
+        <p class="hero-eyebrow">Simply Reliable!</p>
         <h1 id="brand-name" class="brand-name">{profile.name}</h1>
         <p class="headline">{profile.headline}</p>
 
@@ -58,7 +59,7 @@ const profile = loadProfile();
   </section>
 
   <div class="home-container">
-    <section class="content-section" aria-labelledby="about-heading">
+    <section class="content-section about-section" aria-labelledby="about-heading">
       <h2 id="about-heading">About</h2>
       <p class="bio-text">
         <strong>{profile.name}</strong> is a software engineer who helps teams
@@ -130,24 +131,36 @@ const profile = loadProfile();
     margin-bottom: var(--space-lg);
     color: var(--hero-fg);
     background-color: var(--hero-bg);
+    /* Palette gradient (Hunter Green -> Jungle Teal -> Muted Teal -> Celadon
+       -> Honeydew) with a left-to-right legibility scrim so the light type
+       always keeps its contrast. */
     background-image:
       linear-gradient(
-        135deg,
-        rgba(18, 40, 30, 0.95) 0%,
-        rgba(18, 40, 30, 0.86) 55%,
-        rgba(18, 40, 30, 0.62) 100%
+        90deg,
+        rgba(11, 26, 19, 0.92) 0%,
+        rgba(11, 26, 19, 0.82) 45%,
+        rgba(11, 26, 19, 0.5) 68%,
+        rgba(11, 26, 19, 0.12) 88%,
+        rgba(11, 26, 19, 0) 100%
       ),
-      radial-gradient(circle at 82% 45%, rgba(121, 185, 154, 0.28), transparent 55%),
-      url("/images/hero-code.svg");
+      url("/images/hero-code.svg"),
+      linear-gradient(
+        115deg,
+        #2e5d46 0%,
+        #4a8061 26%,
+        #79b99a 52%,
+        #b5d5c0 78%,
+        #dcebe0 100%
+      );
     background-size:
       auto,
-      auto,
-      320px 320px;
+      320px 320px,
+      auto;
     background-position:
       center,
-      center,
-      left top;
-    background-repeat: no-repeat, no-repeat, repeat;
+      left top,
+      center;
+    background-repeat: no-repeat, repeat, no-repeat;
   }
 
   .hero-inner {
@@ -181,7 +194,7 @@ const profile = loadProfile();
     aspect-ratio: 1;
     object-fit: cover;
     object-position: 50% 22%;
-    border: 0.236rem solid rgba(220, 235, 224, 0.85);
+    border: 0.236rem solid var(--header-bg);
     border-radius: 50%;
     box-shadow: 0 1.618rem 2.618rem rgba(0, 0, 0, 0.35);
   }
@@ -195,6 +208,16 @@ const profile = loadProfile();
     color: var(--hero-fg-strong);
     margin-top: 0;
     margin-bottom: var(--space-sm);
+  }
+
+  .hero-eyebrow {
+    margin: 0 0 0.618rem;
+    color: var(--hero-fg-muted);
+    font-size: clamp(1rem, 0.9rem + 0.4vw, 1.25rem);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    line-height: 1.236;
+    text-transform: uppercase;
   }
 
   .headline {
@@ -286,11 +309,19 @@ const profile = loadProfile();
   }
 
   .bio-text {
-    font-size: var(--text-body);
+    /* Wider feature column for the About copy: ~76 characters at the larger size */
+    max-width: 76ch;
+    font-size: clamp(1.125rem, 1.05rem + 0.35vw, 1.25rem);
     line-height: var(--golden-line);
     color: var(--fg);
     margin-top: 0;
     margin-bottom: var(--space-sm);
+    text-align: justify;
+    hyphens: auto;
+  }
+
+  .about-section h2 {
+    font-size: 2rem;
   }
 
   .bio-text:last-child {
