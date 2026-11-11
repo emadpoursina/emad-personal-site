@@ -273,4 +273,36 @@ describe('env.mjs', () => {
     reset();
     assert.equal(getConfig().DATA_DIR, './data');
   });
+
+  test('blank values fall back to defaults (the `cp .env.example .env` case)', async () => {
+    process.env.PORT = '';
+    process.env.HOST = '';
+    process.env.DATA_DIR = '';
+    process.env.CONTACT_TO = '';
+    process.env.CONTACT_RATE_LIMIT_PER_HOUR = '';
+    process.env.SMTP_PORT = '';
+    process.env.SMTP_FROM = '';
+    const { getConfig, reset } = await import('../src/lib/env.mjs');
+    reset();
+
+    const conf = getConfig();
+    assert.equal(conf.PORT, 4321);
+    assert.equal(conf.HOST, '0.0.0.0');
+    assert.equal(conf.DATA_DIR, './data');
+    assert.equal(conf.CONTACT_TO, 'emad.poursina.work@gmail.com');
+    assert.equal(conf.CONTACT_RATE_LIMIT_PER_HOUR, 5);
+    assert.equal(conf.SMTP_PORT, 587);
+    assert.equal(conf.SMTP_FROM, 'Emad Poursina <emad.poursina.work@gmail.com>');
+  });
+
+  test('surrounding whitespace is trimmed from string and path values', async () => {
+    process.env.HOST = '  127.0.0.1  ';
+    process.env.DATA_DIR = '  /tmp/site-data  ';
+    const { getConfig, reset } = await import('../src/lib/env.mjs');
+    reset();
+
+    const conf = getConfig();
+    assert.equal(conf.HOST, '127.0.0.1');
+    assert.equal(conf.DATA_DIR, '/tmp/site-data');
+  });
 });

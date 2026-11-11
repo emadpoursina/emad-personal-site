@@ -87,6 +87,25 @@ function parseTimeoutMs(raw, key = 'AI_TIMEOUT_MS', defaultValue = 30000, maxVal
 }
 
 /**
+ * Reads an environment string, treating unset and blank values alike.
+ *
+ * `.env.example` is copied to `.env` with every key present but empty, so
+ * `DATA_DIR=` means "not configured" and must not override the default with an
+ * empty string (an empty DATA_DIR makes `mkdirSync('')` fail and the database
+ * unopenable). Existing code compares `trim() !== ''` for the same reason.
+ *
+ * @param {string} name
+ * @param {string} [fallback]
+ * @returns {string}
+ */
+function envString(name, fallback = '') {
+  const raw = process.env[name];
+  if (raw === undefined) return fallback;
+  const trimmed = String(raw).trim();
+  return trimmed === '' ? fallback : trimmed;
+}
+
+/**
  * Returns the parsed, cached configuration object.
  * @returns {Record<string, unknown>}
  */
@@ -136,18 +155,18 @@ export function config() {
   );
 
   _config = {
-    PORT:                        parseInt(process.env.PORT ?? '4321', 10),
-    HOST:                        process.env.HOST ?? '0.0.0.0',
-    DATA_DIR:                    process.env.DATA_DIR ?? './data',
-    CONTACT_TO:                  process.env.CONTACT_TO ?? 'emad.poursina.work@gmail.com',
-    CONTACT_RATE_LIMIT_PER_HOUR: parseInt(process.env.CONTACT_RATE_LIMIT_PER_HOUR ?? '5', 10),
-    TRUST_PROXY:                 (process.env.TRUST_PROXY ?? '0') === '1' ? 1 : 0,
+    PORT:                        parseInt(envString('PORT', '4321'), 10),
+    HOST:                        envString('HOST', '0.0.0.0'),
+    DATA_DIR:                    envString('DATA_DIR', './data'),
+    CONTACT_TO:                  envString('CONTACT_TO', 'emad.poursina.work@gmail.com'),
+    CONTACT_RATE_LIMIT_PER_HOUR: parseInt(envString('CONTACT_RATE_LIMIT_PER_HOUR', '5'), 10),
+    TRUST_PROXY:                 envString('TRUST_PROXY', '0') === '1' ? 1 : 0,
     SMTP_HOST:                   smtpHost,
-    SMTP_PORT:                   parseInt(process.env.SMTP_PORT ?? '587', 10),
+    SMTP_PORT:                   parseInt(envString('SMTP_PORT', '587'), 10),
     SMTP_SECURE:                 (process.env.SMTP_SECURE ?? 'false').toLowerCase() === 'true',
     SMTP_USER:                   smtpUser,
     SMTP_PASS:                   smtpPass,
-    SMTP_FROM:                   process.env.SMTP_FROM ?? 'Emad Poursina <emad.poursina.work@gmail.com>',
+    SMTP_FROM:                   envString('SMTP_FROM', 'Emad Poursina <emad.poursina.work@gmail.com>'),
     ADMIN_PASSWORD_HASH:         adminPasswordHash,
     ENCRYPTION_KEY:              encryptionKey,
     AI_BASE_URL:                 aiBaseUrl,
