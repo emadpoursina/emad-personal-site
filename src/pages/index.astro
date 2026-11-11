@@ -109,10 +109,19 @@ const profile = loadProfile();
     <section class="content-section" aria-labelledby="countries-heading">
       <h2 id="countries-heading">Target Countries</h2>
       <ul class="tag-list">
-        {profile.targetCountries.map((country) => (
-          <li>{country}</li>
-        ))}
+        <li>Germany</li>
+        <li>Switzerland</li>
+        <li>Austria</li>
+        <li>Other EU countries</li>
+        <li>Canada</li>
+        <li>United States</li>
+        <li>Australia</li>
       </ul>
+      <p class="countries-note">
+        Requiring employer-sponsored work authorization and is available with one month’s notice.
+        Recruiters and hiring managers should plan for visa sponsorship as part of the hiring
+        process.
+      </p>
     </section>
   </div>
 </BaseLayout>
@@ -348,6 +357,14 @@ const profile = loadProfile();
     padding: var(--space-2xs) var(--space-xs);
     border-radius: var(--space-2xs);
     font-size: var(--text-body);
+  }
+
+  .countries-note {
+    max-width: 76ch;
+    margin: var(--space-sm) 0 0;
+    font-size: 1.0625rem;
+    line-height: var(--golden-line);
+    color: var(--fg);
   }
 
   @media (max-width: 900px) {
