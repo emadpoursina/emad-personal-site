@@ -37,6 +37,7 @@ const personJsonLd = JSON.stringify(buildPersonJsonLd(loadProfile())).replace(/<
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <title>{title}</title>
+    <slot name="head" />
     <script type="application/ld+json" is:inline set:html={personJsonLd} />
   </head>
   <body>

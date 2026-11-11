@@ -4,12 +4,18 @@
  *
  * Site header with site owner name linking to / and primary nav links.
  * Landmarks: <header> containing a native <nav> with an accessible label.
+ * - Fixed minimum height and consistent padding on every page.
+ * - Nav links render as prominent pill buttons.
+ * - The current page is marked with aria-current="page".
  * No client-side scripts.
  */
 
 import { loadProfile } from '../lib/profile.mjs';
 
 const profile = loadProfile();
+const currentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const isActive = (href) =>
+  href === '/' ? currentPath === '/' : currentPath === href || currentPath.startsWith(`${href}/`);
 ---
 
 <header class="site-header">
@@ -17,12 +23,48 @@ const profile = loadProfile();
     <a href="/" class="site-title">{profile.name}</a>
     <nav class="site-nav" aria-label="Main navigation">
       <ul class="nav-list">
-        <li><a href="/about" class="nav-link">About</a></li>
-        <li><a href="/case-studies" class="nav-link">Case Studies</a></li>
-        <li><a href="/cover-letter" class="nav-link">Cover Letter</a></li>
-        <li><a href="/ask" class="nav-link">Ask</a></li>
-        <li><a href="/cv.pdf" class="nav-link">CV</a></li>
-        <li><a href="/contact" class="nav-link">Contact</a></li>
+        <li>
+          <a
+            href="/about"
+            class="nav-link"
+            aria-current={isActive('/about') ? 'page' : undefined}>About</a
+          >
+        </li>
+        <li>
+          <a
+            href="/case-studies"
+            class="nav-link"
+            aria-current={isActive('/case-studies') ? 'page' : undefined}>Case Studies</a
+          >
+        </li>
+        <li>
+          <a
+            href="/cover-letter"
+            class="nav-link"
+            aria-current={isActive('/cover-letter') ? 'page' : undefined}>Cover Letter</a
+          >
+        </li>
+        <li>
+          <a
+            href="/ask"
+            class="nav-link"
+            aria-current={isActive('/ask') ? 'page' : undefined}>Ask</a
+          >
+        </li>
+        <li>
+          <a
+            href="/cv.pdf"
+            class="nav-link"
+            aria-current={currentPath === '/cv.pdf' ? 'page' : undefined}>CV</a
+          >
+        </li>
+        <li>
+          <a
+            href="/contact"
+            class="nav-link"
+            aria-current={isActive('/contact') ? 'page' : undefined}>Contact</a
+          >
+        </li>
       </ul>
     </nav>
   </div>
@@ -30,25 +72,31 @@ const profile = loadProfile();
 
 <style>
   .site-header {
+    padding: 0;
     border-bottom: 1px solid var(--bg-muted);
     background-color: var(--bg);
   }
 
   .header-inner {
     max-width: 800px;
+    min-height: 4.25rem;
     margin: 0 auto;
-    padding: 1rem;
+    padding: 0.5rem 1rem;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 1rem;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 0.5rem 1.25rem;
   }
 
   .site-title {
-    font-size: 1.125rem;
+    flex: 0 0 auto;
+    font-size: 1.25rem;
     font-weight: 700;
+    letter-spacing: -0.01em;
     color: var(--fg-heading);
     text-decoration: none;
+    white-space: nowrap;
   }
 
   .site-title:hover {
@@ -58,24 +106,69 @@ const profile = loadProfile();
 
   .site-nav {
     display: flex;
+    min-width: 0;
   }
 
   .nav-list {
     display: flex;
-    gap: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0.4rem;
     list-style: none;
     margin: 0;
     padding: 0;
   }
 
   .nav-link {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--fg-link);
+    border-radius: 999px;
+    background-color: transparent;
     color: var(--fg-link);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.25;
     text-decoration: none;
-    font-weight: 500;
+    white-space: nowrap;
   }
 
   .nav-link:hover {
+    background-color: var(--bg-muted);
+    border-color: var(--fg-link-hover);
     color: var(--fg-link-hover);
-    text-decoration: underline;
+    text-decoration: none;
+  }
+
+  .nav-link[aria-current="page"] {
+    background-color: var(--bg-btn);
+    border-color: var(--bg-btn);
+    color: var(--fg-btn);
+  }
+
+  .nav-link[aria-current="page"]:hover {
+    background-color: var(--bg-btn-hover);
+    border-color: var(--bg-btn-hover);
+    color: var(--fg-btn-hover);
+  }
+
+  @media (max-width: 767px) {
+    .header-inner {
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 0.75rem 1rem;
+    }
+
+    .site-nav {
+      width: 100%;
+    }
+
+    .nav-list {
+      gap: 0.375rem;
+    }
+
+    .nav-link {
+      padding: 0.35rem 0.7rem;
+      font-size: 0.875rem;
+    }
   }
 </style>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320" role="presentation">
+  <g fill="none" stroke="#2e5d46" stroke-opacity="0.05" stroke-width="1">
+    <path d="M40 0v320M80 0v320M120 0v320M160 0v320M200 0v320M240 0v320M280 0v320" />
+    <path d="M0 40h320M0 80h320M0 120h320M0 160h320M0 200h320M0 240h320M0 280h320" />
+  </g>
+  <g fill="#2e5d46" fill-opacity="0.09" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-weight="700">
+    <text x="16" y="74" font-size="40">{ }</text>
+    <text x="176" y="166" font-size="40">&lt;/&gt;</text>
+    <text x="212" y="84" font-size="20">01</text>
+    <text x="48" y="266" font-size="20">=&gt;</text>
+    <text x="248" y="286" font-size="20">*</text>
+  </g>
+</svg>

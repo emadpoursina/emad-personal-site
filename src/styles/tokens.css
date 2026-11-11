@@ -2,6 +2,9 @@
  * src/styles/tokens.css
  *
  * Design tokens: color palettes for light and dark themes.
+ * - Main palette: Hunter Green #2e5d46, Jungle Teal #4a8061, Muted Teal #79b99a,
+ *   Celadon #b5d5c0, Honeydew #dcebe0. Darker/lighter shades below are derived
+ *   from these five colours to satisfy the contrast targets.
  * - Light palette targets >= 7:1 contrast for body text, never below 4.5:1 for any text pair.
  * - Dark palette same constraint.
  * - Focus ring >= 3:1 against both page backgrounds.
@@ -13,30 +16,30 @@
 /* ---- Light theme ---- */
 [data-theme="light"] {
   /* Backgrounds */
-  --bg:          #ffffff;
-  --bg-muted:    #f5f5f5;
-  --bg-form:     #fafafa;
+  --bg:          #dcebe0; /* Honeydew */
+  --bg-muted:    #b5d5c0; /* Celadon */
+  --bg-form:     #dcebe0; /* Honeydew */
 
   /* Foreground / text */
-  --fg:          #111111;
-  --fg-muted:    #555555;
-  --fg-heading:  #0d0d0d;
-  --fg-footer:   #444444;
-  --fg-link:     #0a5eb0;
-  --fg-link-hover: #073d75;
+  --fg:          #1a392b; /* deep Hunter Green shade */
+  --fg-muted:    #335c46;
+  --fg-heading:  #12281e;
+  --fg-footer:   #1a392b;
+  --fg-link:     #2e5d46; /* Hunter Green */
+  --fg-link-hover: #173528;
 
   /* Button / form text */
   --fg-btn:      #ffffff;
-  --bg-btn:      #0a5eb0;
+  --bg-btn:      #2e5d46; /* Hunter Green */
   --fg-btn-hover: #ffffff;
-  --bg-btn-hover: #073d75;
+  --bg-btn-hover: #1f4534;
 
   /* Focus */
-  --focus-ring:  #2563eb;
+  --focus-ring:  #2e5d46; /* Hunter Green */
 
   /* Status / feedback */
-  --color-error:   #b91c1c;
-  --color-success: #15803d;
+  --color-error:   #a32222;
+  --color-success: #1f6b3f;
 
   /* Declared text/background pairs (fg token on bg token) */
   --pair-body:        --fg on --bg;
@@ -54,30 +57,30 @@
 /* ---- Dark theme ---- */
 [data-theme="dark"] {
   /* Backgrounds */
-  --bg:          #0f0f0f;
-  --bg-muted:    #1a1a1a;
-  --bg-form:     #141414;
+  --bg:          #12281e; /* deep Hunter Green shade */
+  --bg-muted:    #1b3a2b;
+  --bg-form:     #173327;
 
   /* Foreground / text */
-  --fg:          #e8e8e8;
-  --fg-muted:    #a0a0a0;
-  --fg-heading:  #f0f0f0;
-  --fg-footer:   #b0b0b0;
-  --fg-link:     #60a5fa;
-  --fg-link-hover: #93c5fd;
+  --fg:          #dcebe0; /* Honeydew */
+  --fg-muted:    #a8cfb8;
+  --fg-heading:  #f2f9f4;
+  --fg-footer:   #c4dfcc;
+  --fg-link:     #8fcba8;
+  --fg-link-hover: #b5d5c0; /* Celadon */
 
   /* Button / form text */
-  --fg-btn:      #0f0f0f;
-  --bg-btn:      #60a5fa;
-  --fg-btn-hover: #0f0f0f;
-  --bg-btn-hover: #93c5fd;
+  --fg-btn:      #12281e;
+  --bg-btn:      #79b99a; /* Muted Teal */
+  --fg-btn-hover: #12281e;
+  --bg-btn-hover: #b5d5c0; /* Celadon */
 
   /* Focus */
-  --focus-ring:  #60a5fa;
+  --focus-ring:  #b5d5c0; /* Celadon */
 
   /* Status / feedback */
-  --color-error:   #f87171;
-  --color-success: #4ade80;
+  --color-error:   #f2a7a7;
+  --color-success: #8fe0a8;
 
   /* Declared text/background pairs */
   --pair-body:        --fg on --bg;
@@ -95,28 +98,28 @@
 /* ---- :root defaults to light values ---- */
 :root {
   /* Backgrounds */
-  --bg:          #ffffff;
-  --bg-muted:    #f5f5f5;
-  --bg-form:     #fafafa;
+  --bg:          #dcebe0;
+  --bg-muted:    #b5d5c0;
+  --bg-form:     #dcebe0;
 
   /* Foreground / text */
-  --fg:          #111111;
-  --fg-muted:    #555555;
-  --fg-heading:  #0d0d0d;
-  --fg-footer:   #444444;
-  --fg-link:     #0a5eb0;
-  --fg-link-hover: #073d75;
+  --fg:          #1a392b;
+  --fg-muted:    #335c46;
+  --fg-heading:  #12281e;
+  --fg-footer:   #1a392b;
+  --fg-link:     #2e5d46;
+  --fg-link-hover: #173528;
 
   /* Button / form text */
   --fg-btn:      #ffffff;
-  --bg-btn:      #0a5eb0;
+  --bg-btn:      #2e5d46;
   --fg-btn-hover: #ffffff;
-  --bg-btn-hover: #073d75;
+  --bg-btn-hover: #1f4534;
 
   /* Focus */
-  --focus-ring:  #2563eb;
+  --focus-ring:  #2e5d46;
 
   /* Status / feedback */
-  --color-error:   #b91c1c;
-  --color-success: #15803d;
+  --color-error:   #a32222;
+  --color-success: #1f6b3f;
 }
