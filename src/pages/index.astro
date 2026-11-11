@@ -60,7 +60,40 @@ const profile = loadProfile();
   <div class="home-container">
     <section class="content-section" aria-labelledby="about-heading">
       <h2 id="about-heading">About</h2>
-      <p class="bio-text">{profile.bio}</p>
+      <p class="bio-text">
+        <strong>{profile.name}</strong> is a software engineer who helps teams
+        <strong>ship reliable production systems</strong> and keep them
+        <strong>maintainable after release</strong>. With <strong>more than seven years of Node.js
+        experience</strong>, he owns work from <strong>requirements and architecture</strong> through
+        <strong>implementation, deployment, and final release</strong>.
+      </p>
+      <p class="bio-text">
+        His experience spans <strong>technical leadership</strong> on web platforms, <strong>custom
+        WordPress development</strong>, <strong>full-stack SaaS products</strong> in React and Next.js,
+        and <strong>backend plus DevOps</strong> on AI applications. Recent work includes an
+        <strong>AI dictation SaaS</strong> (Electron desktop client and Node.js backend) and a
+        <strong>React Native iOS app</strong> for a luxury concierge platform. On these projects he
+        <strong>improved existing codebases</strong>, <strong>introduced clearer structure</strong>, and
+        <strong>managed releases</strong> to reduce risk for users.
+      </p>
+      <p class="bio-text">
+        He currently focuses on <strong>AI and agentic systems</strong>. He chooses the approach that
+        matches the problem: <strong>deterministic code</strong> for reliability, <strong>targeted
+        automation</strong> for repetitive tasks, or <strong>agents</strong> when they provide a clear
+        benefit. The aim is always a solution that <strong>meets the real need</strong> without adding
+        unnecessary complexity or long-term maintenance cost.
+      </p>
+      <p class="bio-text">
+        Teams gain an engineer who can <strong>join at any stage</strong>, <strong>assess existing
+        constraints</strong>, and <strong>move the project forward</strong> with practical decisions. He
+        works effectively in <strong>remote environments</strong>, delivers <strong>clear code
+        reviews</strong>, and treats <strong>release quality</strong> as a core part of the engineering
+        process.
+      </p>
+      <p class="bio-text">
+        Organizations that need someone to <strong>own problems end to end</strong> and <strong>apply AI
+        only when it improves results</strong> will find that approach in his work.
+      </p>
     </section>
 
     <section class="content-section" aria-labelledby="roles-heading">
@@ -256,6 +289,17 @@ const profile = loadProfile();
     font-size: var(--text-body);
     line-height: var(--golden-line);
     color: var(--fg);
+    margin-top: 0;
+    margin-bottom: var(--space-sm);
+  }
+
+  .bio-text:last-child {
+    margin-bottom: 0;
+  }
+
+  .bio-text strong {
+    color: var(--fg-heading);
+    font-weight: 700;
   }
 
   .tag-list {
