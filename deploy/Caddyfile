@@ -1,0 +1,25 @@
+# Production reverse proxy for the personal site.
+# SITE_DOMAIN is injected by compose from .env, e.g. SITE_DOMAIN=emadpoursina.com
+# Use the apex hostname here; www is redirected to it below.
+
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# The contact form posts same-origin, so Astro's origin check needs SITE_URL
+	# baked into the image (see the Dockerfile build arg).
+	reverse_proxy site:4321
+}
+
+# Canonical host: one redirect, then the apex block above serves the site.
+www.{$SITE_DOMAIN} {
+	redir https://{$SITE_DOMAIN}{uri} permanent
+}

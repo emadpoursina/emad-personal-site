@@ -118,10 +118,26 @@ The site is served on `http://localhost:8080` (override with `SITE_PORT`), the S
 the named volume `app-data` at `/app/data`, and `GET /healthz` reports database and SMTP state. The
 image runs as the non-root `node` user on `node:22-bookworm-slim`.
 
-Astro's origin check stays enabled: `astro.config.mjs` trusts `localhost` and `127.0.0.1` at any
-port so the native no-JavaScript form can post to `/api/contact` during local development and
-container checks. When the site gets a real domain, add its hostname to `security.allowedDomains`
-there, or the browser's same-origin form submission will be rejected with 403.
+Astro's origin check stays enabled, so a form POST is accepted only when the request's
+`Origin` matches the URL the server builds from the `Host` and `X-Forwarded-Proto` headers. Any
+reverse proxy must therefore forward the original `Host` (Caddy does this by default) and set
+`X-Forwarded-Proto`. `astro.config.mjs` trusts `localhost` and `127.0.0.1` at any port, and adds
+the hostname from `SITE_URL` (plus its www/apex counterpart) when that variable is set, so
+forwarded headers for the production host are trusted without editing the file.
+
+## Deployment
+
+`compose.prod.yaml` runs the site behind Caddy (automatic TLS) on a single VPS: no published app
+port, SQLite on the `emad-personal-site-prod_app-data` volume, and `SITE_URL` baked into the
+prerendered sitemap and `llms.txt`.
+
+```sh
+cp .env.example .env    # set SITE_DOMAIN, SITE_URL, SMTP_*
+docker compose -f compose.prod.yaml up -d --build
+```
+
+The full runbook — DNS, server hardening, firewall, backups, rollback — is in
+[`deploy/README.md`](deploy/README.md).
 
 ## Known gates and deferred checks
 

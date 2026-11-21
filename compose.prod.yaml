@@ -1,0 +1,70 @@
+# Production stack: Caddy terminates TLS on 80/443, the site stays on a private
+# network with no published port, and SQLite lives on the named volume app-data.
+#
+# Usage:  docker compose -f compose.prod.yaml up -d --build
+# Runbook: deploy/README.md
+#
+# A distinct project name keeps this stack's volumes separate from the local
+# compose.yaml stack, so a dev `docker compose up` can never touch production data.
+name: emad-personal-site-prod
+
+services:
+  site:
+    build:
+      context: .
+      args:
+        # Prerendered sitemap.xml/llms.txt URLs and Astro's trusted form origin.
+        SITE_URL: "https://${SITE_DOMAIN:?set SITE_DOMAIN in .env}"
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      PORT: "4321"
+      HOST: 0.0.0.0
+      DATA_DIR: /app/data
+      # Caddy is the only proxy in front of the app, so its X-Forwarded-For is trusted
+      # for the contact form's per-IP rate limit.
+      TRUST_PROXY: "1"
+    volumes:
+      - app-data:/app/data
+    expose:
+      - "4321"
+    restart: unless-stopped
+    networks:
+      - web
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      - site
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?set SITE_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+    networks:
+      - web
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  app-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  web:

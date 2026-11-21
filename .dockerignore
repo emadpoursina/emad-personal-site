@@ -6,5 +6,6 @@ dist
 .evidence
 specs
 tests
+deploy
 data
 *.sqlite
