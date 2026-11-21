@@ -112,6 +112,11 @@ async function run() {
   let fwdContainerName = null;
   let localProxy = null;
 
+  // The steps below write a throwaway .env at the repository root. A developer's real
+  // .env (gitignored secrets) must survive the run, so capture the exact bytes now and
+  // restore them in the cleanup block instead of deleting whatever is there.
+  const originalEnv = fs.existsSync(ENV_PATH) ? fs.readFileSync(ENV_PATH) : null;
+
   // Track verified outcomes
   let healthzStatus = 0;
   let rowsBefore = 0;
@@ -141,9 +146,16 @@ async function run() {
 
   const env = {
     ...process.env,
-    DOCKER_CONFIG: '/opt/data/home/.docker',
     SITE_PORT: String(sitePort),
   };
+
+  // Some sandboxes preconfigure a Docker config directory. Use it only when it exists
+  // (and always prefer an explicit DOCKER_CONFIG), so the script also runs on a normal
+  // workstation where that path is absent.
+  const sandboxDockerConfig = process.env.DOCKER_CONFIG || '/opt/data/home/.docker';
+  if (fs.existsSync(sandboxDockerConfig)) {
+    env.DOCKER_CONFIG = sandboxDockerConfig;
+  }
 
   const gateway = getGatewayIp();
 
@@ -595,11 +607,14 @@ async function run() {
       } catch {}
     }
 
-    if (fs.existsSync(ENV_PATH)) {
-      try {
-        fs.unlinkSync(ENV_PATH);
-      } catch {}
-    }
+    // Restore the developer's .env untouched; only a file this run created is removed.
+    try {
+      if (originalEnv === null) {
+        if (fs.existsSync(ENV_PATH)) fs.unlinkSync(ENV_PATH);
+      } else {
+        fs.writeFileSync(ENV_PATH, originalEnv);
+      }
+    } catch {}
   }
 
   // 10. Summary line
